@@ -1058,38 +1058,90 @@ function App() {
     }
   }, [scenarios, workforceData, executiveData]);
 
-  const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
-          <select 
-            value={activeScenario}
-            onChange={(e) => onSelectScenario(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="baseline">Baseline</option>
-            {scenarios.map(scenario => (
-              <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
-            ))}
-          </select>
+  const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => {
+    const [showExportDropdown, setShowExportDropdown] = React.useState(false);
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
+            <select 
+              value={activeScenario}
+              onChange={(e) => onSelectScenario(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2"
+            >
+              <option value="baseline">Baseline</option>
+              {scenarios.map(scenario => (
+                <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-end space-x-2">
+            <button 
+              onClick={onCreateScenario}
+              className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+            >
+              {activeScenario === 'working' ? 'Save as New Scenario' : 'Create New Scenario'}
+            </button>
+            <div className="flex-1 relative">
+              <button 
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
+                title="Export scenario to Excel"
+              >
+                <span>Export to Excel</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showExportDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <div className="p-4">
+                    <h5 className="font-medium text-gray-800 mb-2">Export Information</h5>
+                    <p className="text-sm text-gray-700 mb-3">
+                      Excel exports include comprehensive data for the selected scenario:
+                    </p>
+                    <ul className="text-xs text-gray-600 space-y-1 mb-4">
+                      <li>• Summary statistics and projections for all years (2024-2034)</li>
+                      <li>• Detailed workforce supply, demand, and gap data by occupation</li>
+                      <li>• All parameter values (supply, inflows, outflows, demand drivers)</li>
+                      <li>• Population growth and health status change assumptions</li>
+                      <li>• Service utilization parameters</li>
+                    </ul>
+                    <div className="space-y-2">
+                      <button 
+                        onClick={() => {
+                          exportScenarioToExcel(activeScenario);
+                          setShowExportDropdown(false);
+                        }}
+                        className="w-full text-sm bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700"
+                      >
+                        Export Current Scenario ({activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Unknown'})
+                      </button>
+                      <button 
+                        onClick={() => {
+                          exportScenarioToExcel('baseline');
+                          setShowExportDropdown(false);
+                        }}
+                        className="w-full text-sm bg-gray-600 text-white px-3 py-2 rounded hover:bg-gray-700"
+                      >
+                        Export Baseline Scenario
+                      </button>
+                      <button 
+                        onClick={() => setShowExportDropdown(false)}
+                        className="w-full text-sm bg-gray-300 text-gray-700 px-3 py-2 rounded hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex items-end space-x-2">
-          <button 
-            onClick={onCreateScenario}
-            className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-          >
-            {activeScenario === 'working' ? 'Save as New Scenario' : 'Create New Scenario'}
-          </button>
-          <button 
-            onClick={() => exportScenarioToExcel(activeScenario)}
-            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-            title="Export current scenario to Excel"
-          >
-            Export to Excel
-          </button>
-        </div>
-      </div>
 
       {activeScenario === 'working' && (
         <div className="p-4 bg-orange-50 rounded-lg">
@@ -1135,31 +1187,9 @@ function App() {
         </div>
       )}
 
-      {/* Export Options Section */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <h5 className="font-medium text-blue-800 mb-2">Export Information</h5>
-        <p className="text-sm text-blue-700 mb-3">
-          Excel exports include comprehensive data for the selected scenario:
-        </p>
-        <ul className="text-xs text-blue-600 space-y-1">
-          <li>• Summary statistics and projections for all years (2024-2034)</li>
-          <li>• Detailed workforce supply, demand, and gap data by occupation</li>
-          <li>• All parameter values (supply, inflows, outflows, demand drivers)</li>
-          <li>• Population growth and health status change assumptions</li>
-          <li>• Service utilization parameters</li>
-        </ul>
-        <div className="mt-3 flex space-x-2">
-          <button 
-            onClick={() => exportScenarioToExcel('baseline')}
-            className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-          >
-            Export Baseline
-          </button>
-          <span className="text-xs text-blue-600">or use the Export button above for the active scenario</span>
-        </div>
       </div>
-    </div>
   );
+};
 
   const ParameterImpactChart = ({ parameters }) => {
     // Calculate impact of parameter changes
