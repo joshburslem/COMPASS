@@ -200,13 +200,12 @@ function App() {
     return params;
   }
 
-  const generateSampleProjections = (parameters) => {
-  return new Promise((resolve, reject) => {
+  function generateSampleProjections(parameters = null) {
     try {
       const years = Array.from({length: 11}, (_, i) => 2024 + i);
       const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
 
-      const projections = years.reduce((acc, year) => {
+      return years.reduce((acc, year) => {
         acc[year] = {};
         occupations.forEach(occ => {
           try {
@@ -257,18 +256,25 @@ function App() {
         });
         return acc;
       }, {});
-      resolve(projections);
     } catch (error) {
-      console.error('Error in generateSampleProjections:', error);
-      reject(error);
+      console.error('Error generating sample projections:', error);
+      // Return minimal fallback data
+      return {
+        2024: {
+          'Physicians': { supply: 2500, demand: 2750, gap: 250 },
+          'Nurse Practitioners': { supply: 800, demand: 880, gap: 80 },
+          'Registered Nurses': { supply: 4200, demand: 4620, gap: 420 },
+          'Licensed Practical Nurses': { supply: 1800, demand: 1980, gap: 180 },
+          'Medical Office Assistants': { supply: 3200, demand: 3520, gap: 320 }
+        }
+      };
     }
-  });
-};
+  }
 
-  const applyParameterChanges = React.useCallback(async () => {
+  const applyParameterChanges = React.useCallback(() => {
     try {
       // Generate new projections based on current editing parameters
-      const newProjections = await Promise.resolve(generateSampleProjections(editingParameters));
+      const newProjections = generateSampleProjections(editingParameters);
 
       // Only update existing scenarios - never modify baseline or create new ones automatically
       if (activeScenario !== 'baseline') {
@@ -341,15 +347,13 @@ function App() {
       }));
 
       // Generate a preview of the projections with error handling
-      Promise.resolve()
-        .then(() => generateSampleProjections(newParams))
-        .then(projectedData => {
-          setPreviewProjections(projectedData);
-        })
-        .catch(projectionError => {
-          console.warn('Error generating preview projections:', projectionError);
-          // Don't fail the entire operation if preview fails
-        });
+      try {
+        const projectedData = generateSampleProjections(newParams);
+        setPreviewProjections(projectedData);
+      } catch (projectionError) {
+        console.warn('Error generating preview projections:', projectionError);
+        // Don't fail the entire operation if preview fails
+      }
     } catch (error) {
       console.error('Error updating parameter:', error);
       // Reset to previous state if update fails
@@ -357,12 +361,12 @@ function App() {
     }
   }, [editingParameters]);
 
-  const createNewScenario = React.useCallback(async (scenarioData) => {
+  const createNewScenario = React.useCallback((scenarioData) => {
     try {
       console.log('Creating scenario with data:', scenarioData);
       console.log('Current editing parameters:', editingParameters);
 
-      const scenarioProjections = await Promise.resolve(generateSampleProjections(editingParameters));
+      const scenarioProjections = generateSampleProjections(editingParameters);
 
       const newScenario = {
         id: Date.now().toString(),
