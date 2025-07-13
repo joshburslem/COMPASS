@@ -207,23 +207,26 @@ function App() {
     // Generate new projections based on current editing parameters
     const newProjections = generateSampleProjections(editingParameters);
 
-    // Only update existing scenarios - never modify baseline or create new ones automatically
-    if (activeScenario !== 'baseline') {
+    if (activeScenario === 'baseline') {
+      // For baseline, update the working data but keep baseline parameters immutable
+      setWorkforceData(prev => ({
+        ...prev,
+        projections: newProjections
+      }));
+      console.log('Applied changes to baseline working data');
+    } else {
+      // Update existing scenarios
       const updatedScenarios = scenarios.map(scenario => 
         scenario.id === activeScenario 
           ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
           : scenario
       );
       setScenarios(updatedScenarios);
-      
-      setUnsavedChanges(false);
-      setPendingChanges({});
-      
       console.log('Applied changes to scenario:', activeScenario);
-    } else {
-      // For baseline, we don't apply changes - user must create a new scenario
-      console.log('Cannot apply changes to baseline - use scenario management to save as new scenario');
     }
+    
+    setUnsavedChanges(false);
+    setPendingChanges({});
   }, [editingParameters, activeScenario, scenarios]);
 
   const resetParameters = () => {
@@ -298,10 +301,10 @@ function App() {
       return executiveData.projections;
     }
     
-    // Analyst View shows SAVED scenario projections only - not live editing parameters
+    // Analyst View shows applied projections
     if (activeScenario === 'baseline') {
-      // Always show baseline projections until changes are applied
-      return executiveData.projections;
+      // Show working projections for baseline (updated when Apply Changes is clicked)
+      return workforceData.projections;
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       return scenario?.projections || executiveData.projections;
@@ -450,18 +453,12 @@ function App() {
             {unsavedChanges && (
               <>
                 <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
-                {activeScenario === 'baseline' ? (
-                  <span className="text-sm text-gray-600 italic">
-                    Go to Scenario Management tab to save as new scenario
-                  </span>
-                ) : (
-                  <button 
-                    onClick={applyParameterChanges}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-                  >
-                    Apply Changes
-                  </button>
-                )}
+                <button 
+                  onClick={applyParameterChanges}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                >
+                  Apply Changes
+                </button>
                 <button 
                   onClick={resetParameters}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
