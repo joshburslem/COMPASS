@@ -9,9 +9,9 @@ export default defineConfig({
     port: 5000,
     strictPort: true,
     hmr: {
-      clientPort: 443,
-      port: 5000
+      port: 5000,
+      host: 'localhost'
     },
-    allowedHosts: ['localhost', '.replit.dev', '0be339cd-c50a-4418-8e8a-6a8ba8f37f74-00-1vtjo0ra12kao.riker.replit.dev']
+    allowedHosts: 'all'
   }
 })
