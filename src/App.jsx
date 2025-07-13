@@ -207,34 +207,20 @@ function App() {
     // Generate new projections based on current editing parameters
     const newProjections = generateSampleProjections(editingParameters);
 
-    // If we're editing baseline, force creation of a new scenario
-    if (activeScenario === 'baseline') {
-      const newScenario = {
-        id: Date.now().toString(),
-        name: `Modified Baseline ${new Date().toLocaleTimeString()}`,
-        description: 'Modified from baseline parameters',
-        parameters: JSON.parse(JSON.stringify(editingParameters)),
-        projections: newProjections,
-        createdAt: new Date().toISOString()
-      };
-      
-      const updatedScenarios = [...scenarios, newScenario];
-      setScenarios(updatedScenarios);
-      setActiveScenario(newScenario.id);
-    } else {
-      // Update existing scenario
+    // Only update existing scenarios - never create new ones automatically
+    if (activeScenario !== 'baseline') {
       const updatedScenarios = scenarios.map(scenario => 
         scenario.id === activeScenario 
           ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
           : scenario
       );
       setScenarios(updatedScenarios);
+      
+      setUnsavedChanges(false);
+      setPendingChanges({});
+      
+      console.log('Applied changes to scenario:', activeScenario);
     }
-    
-    setUnsavedChanges(false);
-    setPendingChanges({});
-    
-    console.log('Applied changes to scenario:', activeScenario);
   }, [editingParameters, activeScenario, scenarios, pendingChanges]);
 
   const resetParameters = () => {
@@ -250,7 +236,6 @@ function App() {
     }
     setUnsavedChanges(false);
     setPendingChanges({});
-    setTempInputValues({}); // Clear any temporary input values
   };
 
   const resetToBaseline = () => {
@@ -259,23 +244,10 @@ function App() {
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
-    setTempInputValues({}); // Clear any temporary input values
   };
-
-  // Store temporary input values without triggering state updates
-  const [tempInputValues, setTempInputValues] = React.useState({});
 
   const updateParameter = (paramType, year, occupation, value) => {
-    // Store the temporary value for display purposes
-    const key = `${paramType}|${year}|${occupation}`;
-    setTempInputValues(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  const commitParameterChange = (paramType, year, occupation, value) => {
-    // Only update the actual parameters when committing the change
+    // Create a completely new parameter object to avoid any reference issues
     const newParams = JSON.parse(JSON.stringify(editingParameters));
     if (!newParams[paramType][year]) {
       newParams[paramType][year] = {};
@@ -289,22 +261,6 @@ function App() {
       ...prev,
       [`${paramType}|${year}|${occupation}`]: true
     }));
-
-    // Clear the temporary value
-    const key = `${paramType}|${year}|${occupation}`;
-    setTempInputValues(prev => {
-      const newTemp = { ...prev };
-      delete newTemp[key];
-      return newTemp;
-    });
-  };
-
-  const getParameterValue = (paramType, year, occupation) => {
-    const key = `${paramType}|${year}|${occupation}`;
-    // Return temporary value if it exists, otherwise return the actual parameter value
-    return tempInputValues[key] !== undefined 
-      ? tempInputValues[key] 
-      : editingParameters[paramType][year][occupation];
   };
 
   const createNewScenario = (scenarioData) => {
@@ -339,13 +295,13 @@ function App() {
       return executiveData.projections;
     }
     
-    // Analyst View shows saved scenario projections only (not live editing parameters)
+    // Analyst View shows current scenario projections
     if (activeScenario === 'baseline') {
-      // Show baseline projections until changes are applied
-      return executiveData.projections;
+      // Generate projections from current editing parameters (may differ from baseline if unsaved changes)
+      return generateSampleProjections(editingParameters);
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
-      return scenario?.projections || executiveData.projections;
+      return scenario?.projections || generateSampleProjections(editingParameters);
     }
   };
 
@@ -491,12 +447,18 @@ function App() {
             {unsavedChanges && (
               <>
                 <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
-                <button 
-                  onClick={applyParameterChanges}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-                >
-                  {activeScenario === 'baseline' ? 'Save as New Scenario' : 'Apply Changes'}
-                </button>
+                {activeScenario === 'baseline' ? (
+                  <span className="text-sm text-gray-600 italic">
+                    Go to Scenario Management tab to save as new scenario
+                  </span>
+                ) : (
+                  <button 
+                    onClick={applyParameterChanges}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                  >
+                    Apply Changes
+                  </button>
+                )}
                 <button 
                   onClick={resetParameters}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
@@ -724,11 +686,7 @@ function App() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Parameter Impact Analysis</h3>
-          <ParameterImpactChart parameters={
-            activeScenario === 'baseline' 
-              ? workforceData.baselineParameters 
-              : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-          } />
+          <ParameterImpactChart parameters={editingParameters} />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
@@ -747,9 +705,8 @@ function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {occupations.map(occ => {
               const baseline = baselineParameters[selectedParameterYear][occ];
-              const current = getParameterValue(parameterType, selectedParameterYear, occ);
-              const actualCurrent = parameters[selectedParameterYear][occ];
-              const change = ((actualCurrent - baseline) / baseline * 100).toFixed(1);
+              const current = parameters[selectedParameterYear][occ];
+              const change = ((current - baseline) / baseline * 100).toFixed(1);
 
               return (
                 <div key={occ} className="space-y-2">
@@ -759,14 +716,7 @@ function App() {
                       type="number"
                       step={isPercentage ? "0.01" : "1"}
                       value={current}
-                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, occ, e.target.value)}
-                      onBlur={(e) => commitParameterChange(parameterType, selectedParameterYear, occ, e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          commitParameterChange(parameterType, selectedParameterYear, occ, e.target.value);
-                          e.target.blur();
-                        }
-                      }}
+                      onChange={(e) => onUpdate(parameterType, selectedParameterYear, occ, e.target.value)}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex justify-between items-center text-xs">
@@ -805,15 +755,8 @@ function App() {
                     <input
                       type="number"
                       step="0.001"
-                      value={getParameterValue(parameterType, selectedParameterYear, cat)}
+                      value={current}
                       onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}
-                      onBlur={(e) => commitParameterChange(parameterType, selectedParameterYear, cat, e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          commitParameterChange(parameterType, selectedParameterYear, cat, e.target.value);
-                          e.target.blur();
-                        }
-                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex justify-between items-center text-xs">
@@ -855,13 +798,22 @@ function App() {
             onClick={onCreateScenario}
             className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
           >
-            Create New Scenario
+            {activeScenario === 'baseline' && unsavedChanges ? 'Save Current Changes as New Scenario' : 'Create New Scenario'}
           </button>
           <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
             Export Scenario
           </button>
         </div>
       </div>
+      
+      {activeScenario === 'baseline' && unsavedChanges && (
+        <div className="p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Note:</strong> You have unsaved changes to the baseline parameters. 
+            Click "Save Current Changes as New Scenario" above to create a new scenario with your current parameter adjustments.
+          </p>
+        </div>
+      )}
 
       {scenarios.length > 0 && (
         <div className="mt-6">
