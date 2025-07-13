@@ -1,6 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 
+// Move components outside App to prevent recreation on each render
 const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
   const years = Object.keys(parameters).sort();
   const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
@@ -156,6 +157,64 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
     </div>
   );
 });
+
+const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
+        <select 
+          value={activeScenario}
+          onChange={(e) => onSelectScenario(e.target.value)}
+          className="w-full border border-gray-300 rounded-md px-3 py-2"
+        >
+          <option value="baseline">Baseline</option>
+          {scenarios.map(scenario => (
+            <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-end space-x-2">
+        <button 
+          onClick={onCreateScenario}
+          className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+        >
+          Create New Scenario
+        </button>
+        <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
+          Export Scenario
+        </button>
+      </div>
+    </div>
+
+    {scenarios.length > 0 && (
+      <div className="mt-6">
+        <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
+        <div className="space-y-2">
+          {scenarios.map(scenario => (
+            <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium">{scenario.name}</p>
+                <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => onSelectScenario(scenario.id)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Load
+                </button>
+                <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
 
 function App() {
   const [currentView, setCurrentView] = React.useState('executive');
@@ -720,63 +779,7 @@ function App() {
 
   
 
-  const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
-          <select 
-            value={activeScenario}
-            onChange={(e) => onSelectScenario(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="baseline">Baseline</option>
-            {scenarios.map(scenario => (
-              <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-end space-x-2">
-          <button 
-            onClick={onCreateScenario}
-            className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-          >
-            Create New Scenario
-          </button>
-          <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
-            Export Scenario
-          </button>
-        </div>
-      </div>
-
-      {scenarios.length > 0 && (
-        <div className="mt-6">
-          <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
-          <div className="space-y-2">
-            {scenarios.map(scenario => (
-              <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{scenario.name}</p>
-                  <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => onSelectScenario(scenario.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Load
-                  </button>
-                  <button className="text-red-600 hover:text-red-800 text-sm font-medium">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  
 
   const ParameterImpactChart = ({ parameters }) => {
     // Calculate impact of parameter changes
