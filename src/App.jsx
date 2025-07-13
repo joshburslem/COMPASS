@@ -224,7 +224,7 @@ function App() {
       setScenarios(updatedScenarios);
       console.log('Applied changes to scenario:', activeScenario);
     }
-    
+
     setUnsavedChanges(false);
     setPendingChanges({});
   }, [editingParameters, activeScenario, scenarios]);
@@ -272,9 +272,9 @@ function App() {
   const createNewScenario = (scenarioData) => {
     console.log('Creating scenario with data:', scenarioData);
     console.log('Current editing parameters:', editingParameters);
-    
+
     const scenarioProjections = generateSampleProjections(editingParameters);
-    
+
     const newScenario = {
       id: Date.now().toString(),
       name: scenarioData.name,
@@ -283,15 +283,15 @@ function App() {
       projections: scenarioProjections,
       createdAt: new Date().toISOString()
     };
-    
+
     console.log('New scenario created:', newScenario);
-    
+
     const updatedScenarios = [...scenarios, newScenario];
     setScenarios(updatedScenarios);
     setActiveScenario(newScenario.id);
     setShowScenarioModal(false);
     setUnsavedChanges(false);
-    
+
     console.log('Updated scenarios list:', updatedScenarios);
   };
 
@@ -300,7 +300,7 @@ function App() {
       // Executive View ALWAYS shows baseline projections - never affected by analyst changes
       return executiveData.projections;
     }
-    
+
     // Analyst View shows applied projections
     if (activeScenario === 'baseline') {
       // Show working projections for baseline (updated when Apply Changes is clicked)
@@ -633,7 +633,7 @@ function App() {
               onSelectScenario={(scenarioId) => {
                 console.log('Loading scenario:', scenarioId);
                 console.log('Available scenarios:', scenarios);
-                
+
                 if (scenarioId === 'baseline') {
                   console.log('Loading baseline parameters');
                   // Always use the immutable baseline parameters - create a fresh copy
@@ -644,7 +644,7 @@ function App() {
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
-                  
+
                   if (scenario && scenario.parameters) {
                     console.log('Loading scenario parameters:', scenario.parameters);
                     // Create a fresh copy of scenario parameters to avoid reference issues
@@ -814,7 +814,7 @@ function App() {
           </button>
         </div>
       </div>
-      
+
       {activeScenario === 'baseline' && unsavedChanges && (
         <div className="p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
