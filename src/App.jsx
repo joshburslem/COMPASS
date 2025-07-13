@@ -746,17 +746,6 @@ function App() {
                 console.log('Loading scenario:', scenarioId);
                 console.log('Available scenarios:', scenarios);
 
-                // Check if there are unsaved changes before switching
-                if (unsavedChanges && scenarioId !== activeScenario) {
-                  const confirmSwitch = window.confirm(
-                    `You have unsaved parameter changes. Switching scenarios will discard these changes.\n\nRecommended workflow:\n1. Click "Apply Changes" to see results in visualizations\n2. Go to Scenario Management tab\n3. Click "Save as New Scenario" to save your work\n4. Then switch scenarios safely\n\nOr click OK to proceed and discard changes, or Cancel to stay on the current scenario.`
-                  );
-
-                  if (!confirmSwitch) {
-                    return; // Don't switch scenarios
-                  }
-                }
-
                 if (scenarioId === 'baseline') {
                   console.log('Loading baseline parameters');
                   // Always use the immutable baseline parameters - create a fresh copy
