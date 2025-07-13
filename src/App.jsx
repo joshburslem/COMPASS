@@ -441,17 +441,7 @@ function App() {
     }, {});
   }
 
-  const applyParameterChanges = () => {
-    const newProjections = generateSampleProjections(editingParameters);
-    setWorkforceData({
-      ...workforceData,
-      parameters: editingParameters,
-      projections: newProjections
-    });
-    setUnsavedChanges(false);
-
-    // Note: Executive view remains unchanged
-  };
+  
 
   const resetParameters = React.useCallback(() => {
     dispatch({ type: 'RESET_PARAMETERS', payload: workforceData.parameters });
@@ -465,6 +455,44 @@ function App() {
     });
     setUnsavedChanges(true);
   }, []);
+
+  const applyParameterChanges = React.useCallback(() => {
+    const newProjections = generateSampleProjections(editingParameters);
+    setWorkforceData({
+      ...workforceData,
+      parameters: editingParameters,
+      projections: newProjections
+    });
+    setUnsavedChanges(false);
+  }, [editingParameters, workforceData]);
+
+  // Create stable references for arrays and objects
+  const stableOccupations = React.useMemo(() => workforceData.occupations, [workforceData.occupations]);
+  const stableSupplyParams = React.useMemo(() => editingParameters.supply, [editingParameters.supply]);
+  const stableBaselineSupply = React.useMemo(() => workforceData.baselineParameters.supply, [workforceData.baselineParameters.supply]);
+  const stableEducationalInflow = React.useMemo(() => editingParameters.educationalInflow, [editingParameters.educationalInflow]);
+  const stableBaselineEducationalInflow = React.useMemo(() => workforceData.baselineParameters.educationalInflow, [workforceData.baselineParameters.educationalInflow]);
+  const stableInternationalMigrants = React.useMemo(() => editingParameters.internationalMigrants, [editingParameters.internationalMigrants]);
+  const stableBaselineInternationalMigrants = React.useMemo(() => workforceData.baselineParameters.internationalMigrants, [workforceData.baselineParameters.internationalMigrants]);
+  const stableDomesticMigrants = React.useMemo(() => editingParameters.domesticMigrants, [editingParameters.domesticMigrants]);
+  const stableBaselineDomesticMigrants = React.useMemo(() => workforceData.baselineParameters.domesticMigrants, [workforceData.baselineParameters.domesticMigrants]);
+  const stableReEntrants = React.useMemo(() => editingParameters.reEntrants, [editingParameters.reEntrants]);
+  const stableBaselineReEntrants = React.useMemo(() => workforceData.baselineParameters.reEntrants, [workforceData.baselineParameters.reEntrants]);
+  const stableRetirementRate = React.useMemo(() => editingParameters.retirementRate, [editingParameters.retirementRate]);
+  const stableBaselineRetirementRate = React.useMemo(() => workforceData.baselineParameters.retirementRate, [workforceData.baselineParameters.retirementRate]);
+  const stableAttritionRate = React.useMemo(() => editingParameters.attritionRate, [editingParameters.attritionRate]);
+  const stableBaselineAttritionRate = React.useMemo(() => workforceData.baselineParameters.attritionRate, [workforceData.baselineParameters.attritionRate]);
+  const stablePopulationGrowth = React.useMemo(() => editingParameters.populationGrowth, [editingParameters.populationGrowth]);
+  const stableBaselinePopulationGrowth = React.useMemo(() => workforceData.baselineParameters.populationGrowth, [workforceData.baselineParameters.populationGrowth]);
+  const stableHealthStatusChange = React.useMemo(() => editingParameters.healthStatusChange, [editingParameters.healthStatusChange]);
+  const stableBaselineHealthStatusChange = React.useMemo(() => workforceData.baselineParameters.healthStatusChange, [workforceData.baselineParameters.healthStatusChange]);
+  const stableServiceUtilization = React.useMemo(() => editingParameters.serviceUtilization, [editingParameters.serviceUtilization]);
+  const stableBaselineServiceUtilization = React.useMemo(() => workforceData.baselineParameters.serviceUtilization, [workforceData.baselineParameters.serviceUtilization]);
+  
+  // Stable category arrays
+  const stableAgeGroups = React.useMemo(() => ['0-18', '19-64', '65-84', '85+'], []);
+  const stableHealthStatusCategories = React.useMemo(() => ['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy'], []);
+  const stableServiceCategories = React.useMemo(() => ['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services'], []);
 
   const createNewScenario = (scenarioData) => {
     const newScenario = {
@@ -660,10 +688,10 @@ function App() {
             <ParameterGridWithBaseline 
               title="Current Supply (FTE)"
               parameterType="supply"
-              parameters={editingParameters.supply}
-              baselineParameters={workforceData.baselineParameters.supply}
+              parameters={stableSupplyParams}
+              baselineParameters={stableBaselineSupply}
               onUpdate={updateParameter}
-              occupations={workforceData.occupations}
+              occupations={stableOccupations}
             />
           )}
 
@@ -672,34 +700,34 @@ function App() {
               <ParameterGridWithBaseline 
                 title="Educational Inflow (Annual Graduates)"
                 parameterType="educationalInflow"
-                parameters={editingParameters.educationalInflow}
-                baselineParameters={workforceData.baselineParameters.educationalInflow}
+                parameters={stableEducationalInflow}
+                baselineParameters={stableBaselineEducationalInflow}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
               <ParameterGridWithBaseline 
                 title="International Migrants (Annual)"
                 parameterType="internationalMigrants"
-                parameters={editingParameters.internationalMigrants}
-                baselineParameters={workforceData.baselineParameters.internationalMigrants}
+                parameters={stableInternationalMigrants}
+                baselineParameters={stableBaselineInternationalMigrants}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
               <ParameterGridWithBaseline 
                 title="Domestic Migrants (Annual)"
                 parameterType="domesticMigrants"
-                parameters={editingParameters.domesticMigrants}
-                baselineParameters={workforceData.baselineParameters.domesticMigrants}
+                parameters={stableDomesticMigrants}
+                baselineParameters={stableBaselineDomesticMigrants}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
               <ParameterGridWithBaseline 
                 title="Re-Entrants (Annual)"
                 parameterType="reEntrants"
-                parameters={editingParameters.reEntrants}
-                baselineParameters={workforceData.baselineParameters.reEntrants}
+                parameters={stableReEntrants}
+                baselineParameters={stableBaselineReEntrants}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
             </div>
           )}
@@ -709,19 +737,19 @@ function App() {
               <ParameterGridWithBaseline 
                 title="Retirement Rate (%)"
                 parameterType="retirementRate"
-                parameters={editingParameters.retirementRate}
-                baselineParameters={workforceData.baselineParameters.retirementRate}
+                parameters={stableRetirementRate}
+                baselineParameters={stableBaselineRetirementRate}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
                 isPercentage={true}
               />
               <ParameterGridWithBaseline 
                 title="Attrition Rate (%)"
                 parameterType="attritionRate"
-                parameters={editingParameters.attritionRate}
-                baselineParameters={workforceData.baselineParameters.attritionRate}
+                parameters={stableAttritionRate}
+                baselineParameters={stableBaselineAttritionRate}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
                 isPercentage={true}
               />
             </div>
@@ -732,26 +760,26 @@ function App() {
               <DemandParameterGrid 
                 title="Population Growth Rate (% per year)"
                 parameterType="populationGrowth"
-                parameters={editingParameters.populationGrowth}
-                baselineParameters={workforceData.baselineParameters.populationGrowth}
+                parameters={stablePopulationGrowth}
+                baselineParameters={stableBaselinePopulationGrowth}
                 onUpdate={updateParameter}
-                categories={['0-18', '19-64', '65-84', '85+']}
+                categories={stableAgeGroups}
               />
               <DemandParameterGrid 
                 title="Health Status Change (% per year)"
                 parameterType="healthStatusChange"
-                parameters={editingParameters.healthStatusChange}
-                baselineParameters={workforceData.baselineParameters.healthStatusChange}
+                parameters={stableHealthStatusChange}
+                baselineParameters={stableBaselineHealthStatusChange}
                 onUpdate={updateParameter}
-                categories={['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']}
+                categories={stableHealthStatusCategories}
               />
               <DemandParameterGrid 
                 title="Service Utilization Change (% per year)"
                 parameterType="serviceUtilization"
-                parameters={editingParameters.serviceUtilization}
-                baselineParameters={workforceData.baselineParameters.serviceUtilization}
+                parameters={stableServiceUtilization}
+                baselineParameters={stableBaselineServiceUtilization}
                 onUpdate={updateParameter}
-                categories={['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services']}
+                categories={stableServiceCategories}
               />
             </div>
           )}
