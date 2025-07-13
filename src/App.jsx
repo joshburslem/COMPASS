@@ -431,14 +431,16 @@ function App() {
   };
 
   const updateParameter = React.useCallback((paramType, year, occupation, value) => {
-    const newParams = { ...editingParameters };
-    if (!newParams[paramType][year]) {
-      newParams[paramType][year] = {};
-    }
-    newParams[paramType][year][occupation] = parseFloat(value) || 0;
-    setEditingParameters(newParams);
+    setEditingParameters(prevParams => {
+      const newParams = { ...prevParams };
+      if (!newParams[paramType][year]) {
+        newParams[paramType][year] = {};
+      }
+      newParams[paramType][year][occupation] = parseFloat(value) || 0;
+      return newParams;
+    });
     setUnsavedChanges(true);
-  }, [editingParameters]);
+  }, []);
 
   const createNewScenario = (scenarioData) => {
     const newScenario = {
