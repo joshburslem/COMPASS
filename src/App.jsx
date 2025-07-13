@@ -250,6 +250,12 @@ function App() {
     setPendingChanges({});
   };
 
+  const resetToBaseline = () => {
+    setEditingParameters(workforceData.baselineParameters);
+    setUnsavedChanges(true);
+    setPendingChanges({});
+  };
+
   const updateParameter = (paramType, year, occupation, value) => {
     const newParams = { ...editingParameters };
     if (!newParams[paramType][year]) {
@@ -410,23 +416,31 @@ function App() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Analyst Dashboard</h2>
-          {unsavedChanges && (
-            <div className="flex items-center space-x-3">
-              <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
-              <button 
-                onClick={applyParameterChanges}
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-              >
-                Apply Changes
-              </button>
-              <button 
-                onClick={resetParameters}
-                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
-              >
-                Reset
-              </button>
-            </div>
-          )}
+          <div className="flex items-center space-x-3">
+            {unsavedChanges && (
+              <>
+                <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
+                <button 
+                  onClick={applyParameterChanges}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                >
+                  Apply Changes
+                </button>
+                <button 
+                  onClick={resetParameters}
+                  className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
+                >
+                  Reset
+                </button>
+              </>
+            )}
+            <button 
+              onClick={resetToBaseline}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+            >
+              Reset to Baseline
+            </button>
+          </div>
         </div>
 
         {/* Parameter Tabs */}
