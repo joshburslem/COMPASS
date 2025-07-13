@@ -22,6 +22,8 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
     onUpdate(parameterType, year, occ, value);
   }, [onUpdate, parameterType]);
 
+  const [focusedInput, setFocusedInput] = React.useState(null);
+
   return (
     <div>
       <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
@@ -50,16 +52,20 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
                     const baseline = baselineParameters[year][occ];
                     const current = parameters[year][occ];
                     const change = ((current - baseline) / baseline * 100).toFixed(1);
+                    const inputId = `${parameterType}-${year}-${occ}`;
 
                     return (
-                      <div key={`${parameterType}-${year}-${occ}`} className="space-y-1">
+                      <div key={inputId} className="space-y-1">
                         <label className="text-sm font-medium text-gray-700">{occ}</label>
                         <div className="flex items-center space-x-2">
                           <input
+                            key={inputId}
                             type="number"
                             step={isPercentage ? "0.01" : "1"}
                             value={current}
                             onChange={(e) => handleInputChange(year, occ, e.target.value)}
+                            onFocus={() => setFocusedInput(inputId)}
+                            onBlur={() => setFocusedInput(null)}
                             className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <span className={`text-xs ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -104,6 +110,8 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
     onUpdate(parameterType, year, cat, value);
   }, [onUpdate, parameterType]);
 
+  const [focusedInput, setFocusedInput] = React.useState(null);
+
   return (
     <div>
       <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
@@ -131,16 +139,20 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
                   {categories.map(cat => {
                     const baseline = baselineParameters[year][cat];
                     const current = parameters[year][cat];
+                    const inputId = `${parameterType}-${year}-${cat}`;
 
                     return (
-                      <div key={`${parameterType}-${year}-${cat}`} className="space-y-1">
+                      <div key={inputId} className="space-y-1">
                         <label className="text-sm font-medium text-gray-700">{cat}</label>
                         <div className="flex items-center space-x-2">
                           <input
+                            key={inputId}
                             type="number"
                             step="0.001"
                             value={current}
                             onChange={(e) => handleInputChange(year, cat, e.target.value)}
+                            onFocus={() => setFocusedInput(inputId)}
+                            onBlur={() => setFocusedInput(null)}
                             className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
