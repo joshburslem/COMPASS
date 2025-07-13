@@ -777,9 +777,9 @@ function App() {
     </div>
   );
 
-  
 
-  
+
+
 
   const ParameterImpactChart = ({ parameters }) => {
     // Calculate impact of parameter changes
