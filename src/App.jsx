@@ -550,35 +550,7 @@ function App() {
     </div>
   );
 
-  const AnalystView = () => {
-    const [showBaseline, setShowBaseline] = React.useState(false);
-    const [selectedAnalystOccupations, setSelectedAnalystOccupations] = React.useState(['All']);
-
-    const toggleAnalystOccupation = (occupation) => {
-      if (occupation === 'All') {
-        setSelectedAnalystOccupations(['All']);
-      } else {
-        if (selectedAnalystOccupations.includes('All')) {
-          setSelectedAnalystOccupations([occupation]);
-        } else if (selectedAnalystOccupations.includes(occupation)) {
-          const filtered = selectedAnalystOccupations.filter(o => o !== occupation);
-          setSelectedAnalystOccupations(filtered.length === 0 ? ['All'] : filtered);
-        } else {
-          setSelectedAnalystOccupations([...selectedAnalystOccupations, occupation]);
-        }
-      }
-    };
-
-    const getAnalystFilteredOccupations = () => {
-      if (selectedAnalystOccupations.includes('All')) {
-        return workforceData.occupations;
-      }
-      return selectedAnalystOccupations;
-    };
-
-    const hasAppliedChanges = activeScenario === 'working' || (activeScenario !== 'baseline' && scenarios.find(s => s.id === activeScenario));
-
-    return (
+  const AnalystView = () => (
     <div className="space-y-6">
       {/* Main Dashboard */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -825,133 +797,60 @@ function App() {
         </div>
       </div>
 
-      {/* Visualizations - Only show after changes are applied */}
-      {hasAppliedChanges && (
-        <>
-          {/* Occupation Filter for Visualizations */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Visualization Controls</h3>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={showBaseline}
-                  onChange={(e) => setShowBaseline(e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <span className="text-sm font-medium text-gray-700">Compare with Baseline</span>
-              </label>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Select Occupations to View</h4>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => toggleAnalystOccupation('All')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedAnalystOccupations.includes('All')
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  All Occupations
-                </button>
-                {workforceData.occupations.map(occ => (
-                  <button
-                    key={occ}
-                    onClick={() => toggleAnalystOccupation(occ)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      selectedAnalystOccupations.includes(occ) && !selectedAnalystOccupations.includes('All')
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {occ}
-                  </button>
-                ))}
-              </div>
-            </div>
+      {/* Visualizations */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+<div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">
+              Projected Workforce Gap Trends 
+              <span className="text-sm font-normal text-gray-600 ml-2">
+                ({activeScenario === 'baseline' 
+                  ? 'Baseline' 
+                  : activeScenario === 'working'
+                    ? 'Working Changes (unsaved)'
+                    : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
+              </span>
+            </h3>
+            {activeScenario === 'working' && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                APPLIED CHANGES
+              </span>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold">
-                  Projected Workforce Gap Trends 
-                  <span className="text-sm font-normal text-gray-600 ml-2">
-                    ({activeScenario === 'baseline' 
-                      ? 'Baseline' 
-                      : activeScenario === 'working'
-                        ? 'Working Changes (unsaved)'
-                        : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
-                  </span>
-                </h3>
-                {activeScenario === 'working' && (
-                  <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                    APPLIED CHANGES
-                  </span>
-                )}
-              </div>
-              <ComparativeWorkforceGapChart 
-                data={getCurrentScenarioProjections()} 
-                baselineData={showBaseline ? executiveData.projections : null}
-                selectedOccupations={getAnalystFilteredOccupations()}
-                showBaseline={showBaseline}
-              />
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold">Supply vs Demand Analysis</h3>
-                {activeScenario === 'working' && (
-                  <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                    APPLIED CHANGES
-                  </span>
-                )}
-              </div>
-              <ComparativeSupplyDemandChart 
-                data={getCurrentScenarioProjections()} 
-                baselineData={showBaseline ? executiveData.projections : null}
-                selectedOccupations={getAnalystFilteredOccupations()}
-                showBaseline={showBaseline}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-xl font-semibold mb-4">Parameter Impact Analysis</h3>
-              <ParameterImpactChart parameters={
-                activeScenario === 'baseline' 
-                  ? workforceData.baselineParameters 
-                  : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-              } />
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-xl font-semibold mb-4">Population Health Segments</h3>
-              <PopulationSegmentAnalysis />
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Message when no changes applied */}
-      {!hasAppliedChanges && (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <div className="max-w-md mx-auto">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">No Applied Changes</h3>
-            <p className="text-gray-600 mb-4">
-              Modify parameters above and click "Apply Changes" to see the impact in visualizations.
-            </p>
-            <div className="text-sm text-gray-500">
-              <p>• Edit parameters in the tabs above</p>
-              <p>• Click "Apply Changes" to generate projections</p>
-              <p>• View results with optional baseline comparison</p>
-            </div>
-          </div>
+          <WorkforceGapTrendChart 
+            data={getCurrentScenarioProjections()} 
+            selectedOccupations={workforceData.occupations}
+          />
         </div>
-      )}
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">Supply vs Demand Analysis</h3>
+            {activeScenario === 'working' && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                APPLIED CHANGES
+              </span>
+            )}
+          </div>
+          <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Parameter Impact Analysis</h3>
+          <ParameterImpactChart parameters={
+            activeScenario === 'baseline' 
+              ? workforceData.baselineParameters 
+              : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
+          } />
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Population Health Segments</h3>
+          <PopulationSegmentAnalysis />
+        </div>
+      </div>
     </div>
   );
 
@@ -1130,145 +1029,6 @@ function App() {
             <Bar dataKey="retirementImpact" stackId="negative" fill="#EF4444" name="Retirement" />
             <Bar dataKey="attritionImpact" stackId="negative" fill="#F59E0B" name="Attrition" />
           </BarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  };
-
-  const ComparativeWorkforceGapChart = ({ data, baselineData, selectedOccupations, showBaseline }) => {
-    // Transform data for Recharts
-    const years = Object.keys(data).sort();
-    const chartData = years.map(year => {
-      const yearData = { year };
-      selectedOccupations.forEach(occ => {
-        yearData[occ] = data[year][occ]?.gap || 0;
-        if (showBaseline && baselineData) {
-          yearData[`${occ}_baseline`] = baselineData[year]?.[occ]?.gap || 0;
-        }
-      });
-      return yearData;
-    });
-
-    const colors = {
-      'Physicians': '#3B82F6',
-      'Nurse Practitioners': '#10B981',
-      'Registered Nurses': '#F59E0B',
-      'Licensed Practical Nurses': '#EF4444',
-      'Medical Office Assistants': '#8B5CF6'
-    };
-
-    const CustomTooltip = ({ active, payload, label }) => {
-      if (active && payload && payload.length) {
-        return (
-          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-            <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
-            {payload.map((entry, index) => (
-              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                {`${entry.name.replace('_baseline', ' (Baseline)')}: ${entry.value.toLocaleString()} FTE`}
-              </p>
-            ))}
-          </div>
-        );
-      }
-      return null;
-    };
-
-    return (
-      <div className="h-96 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart 
-            data={chartData} 
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis 
-              dataKey="year" 
-              stroke="#6B7280"
-              tick={{ fill: '#6B7280', fontSize: 12 }}
-            />
-            <YAxis 
-              stroke="#6B7280"
-              tick={{ fill: '#6B7280', fontSize: 12 }}
-              label={{ value: 'Workforce Gap (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="bottom" 
-              height={36}
-              iconType="line"
-              wrapperStyle={{ paddingTop: '20px' }}
-            />
-            {selectedOccupations.map(occ => (
-              <Line
-                key={occ}
-                type="monotone"
-                dataKey={occ}
-                stroke={colors[occ] || '#6B7280'}
-                strokeWidth={3}
-                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, strokeWidth: 2 }}
-                animationDuration={1500}
-                animationEasing="ease-in-out"
-                name={occ}
-              />
-            ))}
-            {showBaseline && selectedOccupations.map(occ => (
-              <Line
-                key={`${occ}_baseline`}
-                type="monotone"
-                dataKey={`${occ}_baseline`}
-                stroke={colors[occ] || '#6B7280'}
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 1, r: 3 }}
-                activeDot={{ r: 5, strokeWidth: 1 }}
-                animationDuration={1500}
-                animationEasing="ease-in-out"
-                name={`${occ} (Baseline)`}
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  };
-
-  const ComparativeSupplyDemandChart = ({ data, baselineData, selectedOccupations, showBaseline }) => {
-    const years = Object.keys(data).sort();
-    const chartData = years.map(year => {
-      const yearData = { year };
-      const totalSupply = selectedOccupations.reduce((sum, occ) => sum + (data[year][occ]?.supply || 0), 0);
-      const totalDemand = selectedOccupations.reduce((sum, occ) => sum + (data[year][occ]?.demand || 0), 0);
-      yearData.supply = totalSupply;
-      yearData.demand = totalDemand;
-
-      if (showBaseline && baselineData) {
-        const baselineSupply = selectedOccupations.reduce((sum, occ) => sum + (baselineData[year]?.[occ]?.supply || 0), 0);
-        const baselineDemand = selectedOccupations.reduce((sum, occ) => sum + (baselineData[year]?.[occ]?.demand || 0), 0);
-        yearData.baselineSupply = baselineSupply;
-        yearData.baselineDemand = baselineDemand;
-      }
-      return yearData;
-    });
-
-    return (
-      <div className="h-96 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Area type="monotone" dataKey="demand" stackId="1" stroke="#EF4444" fill="#FEE2E2" name="Demand" />
-            <Area type="monotone" dataKey="supply" stackId="2" stroke="#3B82F6" fill="#DBEAFE" name="Supply" />
-            {showBaseline && (
-              <>
-                <Area type="monotone" dataKey="baselineDemand" stackId="3" stroke="#EF4444" fill="none" strokeDasharray="5 5" name="Baseline Demand" />
-                <Area type="monotone" dataKey="baselineSupply" stackId="4" stroke="#3B82F6" fill="none" strokeDasharray="5 5" name="Baseline Supply" />
-              </>
-            )}
-          </AreaChart>
         </ResponsiveContainer>
       </div>
     );
@@ -1668,3 +1428,80 @@ function App() {
       </div>
     );
   };
+
+  return (
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-100">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Nova Scotia Primary Care Workforce Planning</h1>
+              <p className="text-sm text-gray-600">Multi-Professional Needs-Based Analytics Dashboard</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <select 
+                value={selectedYear} 
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="border border-gray-300 rounded-md px-3 py-2"
+              >
+                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <button 
+                onClick={() => setShowDataImport(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Import Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setCurrentView('executive')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                currentView === 'executive' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Executive View
+            </button>
+            <button
+              onClick={() => setCurrentView('analyst')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                currentView === 'analyst' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Analyst View
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <ErrorBoundary>
+          {currentView === 'executive' ? <ExecutiveView /> : <AnalystView />}
+        </ErrorBoundary>
+      </main>
+
+      {/* Modals */}
+      {showDataImport && <DataImportModal />}
+      {showScenarioModal && <ScenarioModal />}
+      </div>
+    </ErrorBoundary>
+  );
+}
+
+export default App;
