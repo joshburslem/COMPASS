@@ -12,6 +12,6 @@ export default defineConfig({
       clientPort: 443,
       port: 5000
     },
-    allowedHosts: 'all'
+    allowedHosts: ['localhost', '.replit.dev', '0be339cd-c50a-4418-8e8a-6a8ba8f37f74-00-1vtjo0ra12kao.riker.replit.dev']
   }
 })
