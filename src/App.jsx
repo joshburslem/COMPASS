@@ -170,6 +170,8 @@ function App() {
 
     return years.reduce((acc, year) => {
       acc[year] = {};
+      const yearOffset = year - 2024;
+      
       occupations.forEach(occ => {
         let baseSupply = parameters ? parameters.supply[year][occ] : {
           'Physicians': 2500,
@@ -187,14 +189,66 @@ function App() {
                          parameters.reEntrants[year][occ];
           const outflows = baseSupply * (parameters.retirementRate[year][occ] + parameters.attritionRate[year][occ]);
           baseSupply = baseSupply + inflows - outflows;
+        } else {
+          // Create more realistic baseline projections with non-linear trends
+          
+          // Supply growth factors (different for each occupation)
+          const supplyGrowthRates = {
+            'Physicians': 0.015, // 1.5% annual growth - slower due to training constraints
+            'Nurse Practitioners': 0.025, // 2.5% - expanding scope of practice
+            'Registered Nurses': 0.018, // 1.8% - moderate growth
+            'Licensed Practical Nurses': 0.012, // 1.2% - slower growth
+            'Medical Office Assistants': 0.022 // 2.2% - technology-driven demand
+          };
+          
+          // Demand growth factors (accelerating over time due to aging population)
+          const baseDemandGrowth = 0.025; // 2.5% base demand growth
+          const agingAcceleration = Math.pow(1 + yearOffset * 0.003, 2); // Accelerating demand due to aging
+          const demandMultiplier = Math.pow(1 + baseDemandGrowth * agingAcceleration, yearOffset);
+          
+          // Supply constraints (diminishing returns, retirement acceleration)
+          const retirementAcceleration = 1 + yearOffset * 0.002; // Increasing retirements
+          const supplyMultiplier = Math.pow(1 + supplyGrowthRates[occ] / retirementAcceleration, yearOffset);
+          
+          baseSupply = Math.round(baseSupply * supplyMultiplier);
         }
 
-        const baseDemand = baseSupply * 1.1; // 10% shortage baseline
-        const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
+        // Calculate demand based on realistic factors
+        let demand;
+        if (parameters) {
+          const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+          const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
+          demand = Math.round(baseDemand * yearMultiplier);
+        } else {
+          // Baseline demand calculation with non-linear growth
+          const initialDemand = {
+            'Physicians': 2750, // Initial 10% shortage
+            'Nurse Practitioners': 920,
+            'Registered Nurses': 4830,
+            'Licensed Practical Nurses': 2070,
+            'Medical Office Assistants': 3680
+          }[occ];
+          
+          // Demand grows faster than supply due to aging population and chronic disease prevalence
+          const demandGrowthRate = {
+            'Physicians': 0.032, // 3.2% - high demand growth
+            'Nurse Practitioners': 0.038, // 3.8% - highest growth due to care model changes
+            'Registered Nurses': 0.035, // 3.5% - high demand
+            'Licensed Practical Nurses': 0.028, // 2.8% - moderate growth
+            'Medical Office Assistants': 0.030 // 3.0% - administrative complexity growth
+          }[occ];
+          
+          // Non-linear demand acceleration
+          const populationAging = 1 + yearOffset * 0.004; // Population aging factor
+          const chronicDiseaseIncrease = 1 + yearOffset * 0.003; // Chronic disease prevalence
+          const acceleratedGrowth = Math.pow(1 + demandGrowthRate * populationAging * chronicDiseaseIncrease, yearOffset);
+          
+          demand = Math.round(initialDemand * acceleratedGrowth);
+        }
 
         acc[year][occ] = {
-          supply: Math.round(parameters ? baseSupply : baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)),
-          demand: Math.round(baseDemand * yearMultiplier),
+          supply: baseSupply,
+          demand: demand,
           gap: 0
         };
         acc[year][occ].gap = acc[year][occ].demand - acc[year][occ].supply;
