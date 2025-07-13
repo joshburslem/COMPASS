@@ -743,38 +743,53 @@ function App() {
               activeScenario={activeScenario}
               onCreateScenario={() => setShowScenarioModal(true)}
               onSelectScenario={(scenarioId) => {
-                console.log('Loading scenario:', scenarioId);
-                console.log('Available scenarios:', scenarios);
+                try {
+                  console.log('Loading scenario:', scenarioId);
+                  console.log('Available scenarios:', scenarios);
 
-                if (scenarioId === 'baseline') {
-                  console.log('Loading baseline parameters');
-                  // Always use the immutable baseline parameters - create a fresh copy
-                  setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-                  // Remove working scenario if switching away
-                  setScenarios(scenarios.filter(s => s.id !== 'working'));
-                  setActiveScenario('baseline');
-                  setUnsavedChanges(false);
-                  setPendingChanges({});
-                } else {
-                  const scenario = scenarios.find(s => s.id === scenarioId);
-                  console.log('Found scenario:', scenario);
+                  // Check if there are unsaved changes before switching
+                  if (unsavedChanges && scenarioId !== activeScenario) {
+                    const confirmSwitch = window.confirm(
+                      `You have unsaved parameter changes. Switching scenarios will discard these changes.\n\nRecommended workflow:\n1. Click "Apply Changes" to see results in visualizations\n2. Go to Scenario Management tab\n3. Click "Save as New Scenario" to save your work\n4. Then switch scenarios safely\n\nOr click OK to proceed and discard changes, or Cancel to stay on the current scenario.`
+                    );
 
-                  if (scenario && scenario.parameters) {
-                    console.log('Loading scenario parameters:', scenario.parameters);
-                    // Create a fresh copy of scenario parameters to avoid reference issues
-                    setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
-                    setActiveScenario(scenarioId);
-                    setUnsavedChanges(false);
-                    setPendingChanges({});
-                  } else {
-                    console.error('Scenario not found or missing parameters:', scenarioId);
-                    // Fallback to baseline if scenario is corrupted
+                    if (!confirmSwitch) {
+                      return; // Don't switch scenarios
+                    }
+                  }
+
+                  if (scenarioId === 'baseline') {
+                    console.log('Loading baseline parameters');
+                    // Always use the immutable baseline parameters - create a fresh copy
                     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                    // Remove working scenario if switching away
                     setScenarios(scenarios.filter(s => s.id !== 'working'));
                     setActiveScenario('baseline');
                     setUnsavedChanges(false);
                     setPendingChanges({});
+                  } else {
+                    const scenario = scenarios.find(s => s.id === scenarioId);
+                    console.log('Found scenario:', scenario);
+
+                    if (scenario && scenario.parameters) {
+                      console.log('Loading scenario parameters:', scenario.parameters);
+                      // Create a fresh copy of scenario parameters to avoid reference issues
+                      setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
+                      setActiveScenario(scenarioId);
+                      setUnsavedChanges(false);
+                      setPendingChanges({});
+                    } else {
+                      console.error('Scenario not found or missing parameters:', scenarioId);
+                      // Fallback to baseline if scenario is corrupted
+                      setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                      setScenarios(scenarios.filter(s => s.id !== 'working'));
+                      setActiveScenario('baseline');
+                      setUnsavedChanges(false);
+                      setPendingChanges({});
+                    }
                   }
+                } catch (error) {
+                  console.error("An error occurred while loading the scenario", error);
                 }
               }}
             />
@@ -785,7 +800,7 @@ function App() {
       {/* Visualizations */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
+<div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold">
               Projected Workforce Gap Trends 
               <span className="text-sm font-normal text-gray-600 ml-2">
