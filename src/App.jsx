@@ -16,32 +16,35 @@ function App() {
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
 
   // Enhanced data structure with all editable parameters
-  const [workforceData, setWorkforceData] = React.useState({
-    occupations: ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'],
-    populationSegments: {
-      ageGroups: ['0-18', '19-64', '65-84', '85+'],
-      genders: ['Male', 'Female'],
-      healthStatus: ['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']
-    },
-    projections: generateSampleProjections(),
-    parameters: generateInitialParameters(),
-    baselineParameters: generateInitialParameters(), // Store baseline for comparison
-    scenarios: {
-      baseline: {
-        name: 'Baseline',
-        parameters: generateInitialParameters()
+  const [workforceData, setWorkforceData] = React.useState(() => {
+    const baselineParams = generateInitialParameters();
+    return {
+      occupations: ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'],
+      populationSegments: {
+        ageGroups: ['0-18', '19-64', '65-84', '85+'],
+        genders: ['Male', 'Female'],
+        healthStatus: ['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']
+      },
+      baselineParameters: baselineParams, // Immutable baseline - never modify this
+      scenarios: {
+        baseline: {
+          name: 'Baseline',
+          parameters: JSON.parse(JSON.stringify(baselineParams)) // Deep copy for safety
+        }
       }
-    }
+    };
   });
 
-  // Separate parameters for Executive View (read-only baseline)
-  const [executiveData, setExecutiveData] = React.useState({
+  // Executive View data - always uses baseline parameters (immutable)
+  const [executiveData, setExecutiveData] = React.useState(() => ({
     projections: generateSampleProjections(workforceData.baselineParameters),
     parameters: workforceData.baselineParameters
-  });
+  }));
 
-  // Temporary parameters for editing in Analyst View - initialize with baseline
-  const [editingParameters, setEditingParameters] = React.useState(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+  // Temporary parameters for editing in Analyst View - initialize with baseline copy
+  const [editingParameters, setEditingParameters] = React.useState(() => 
+    JSON.parse(JSON.stringify(workforceData.baselineParameters))
+  );
 
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
@@ -236,10 +239,12 @@ function App() {
 
   const resetParameters = () => {
     if (activeScenario === 'baseline') {
+      // Always use the immutable baseline parameters
       setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       if (scenario) {
+        // Use the scenario's saved parameters
         setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
       }
     }
@@ -248,6 +253,7 @@ function App() {
   };
 
   const resetToBaseline = () => {
+    // Always use the immutable baseline parameters
     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     setActiveScenario('baseline');
     setUnsavedChanges(false);
@@ -255,7 +261,8 @@ function App() {
   };
 
   const updateParameter = (paramType, year, occupation, value) => {
-    const newParams = { ...editingParameters };
+    // Create a completely new parameter object to avoid any reference issues
+    const newParams = JSON.parse(JSON.stringify(editingParameters));
     if (!newParams[paramType][year]) {
       newParams[paramType][year] = {};
     }
@@ -297,8 +304,15 @@ function App() {
   };
 
   const getCurrentScenarioProjections = () => {
+    if (currentView === 'executive') {
+      // Executive View ALWAYS shows baseline projections - never affected by analyst changes
+      return executiveData.projections;
+    }
+    
+    // Analyst View shows current scenario projections
     if (activeScenario === 'baseline') {
-      return executiveData.projections; // Always baseline projections
+      // Generate projections from current editing parameters (may differ from baseline if unsaved changes)
+      return generateSampleProjections(editingParameters);
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       return scenario?.projections || generateSampleProjections(editingParameters);
@@ -395,7 +409,7 @@ function App() {
 
         {/* Dynamic Line Chart */}
         <div className="bg-gray-50 rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">Projected Workforce Gap Trends (2024-2034)</h3>
+          <h3 className="text-xl font-semibold mb-4">Projected Workforce Gap Trends (2024-2034) - Baseline</h3>
           <WorkforceGapTrendChart 
             data={executiveData.projections} 
             selectedOccupations={getFilteredOccupations()}
@@ -630,18 +644,22 @@ function App() {
                 
                 if (scenarioId === 'baseline') {
                   console.log('Loading baseline parameters');
+                  // Always use the immutable baseline parameters - create a fresh copy
                   setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
+                  setPendingChanges({});
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
                   
                   if (scenario) {
                     console.log('Loading scenario parameters:', scenario.parameters);
+                    // Create a fresh copy of scenario parameters
                     setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
+                    setPendingChanges({});
                   } else {
                     console.error('Scenario not found:', scenarioId);
                   }
