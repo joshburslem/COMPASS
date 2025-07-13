@@ -49,7 +49,6 @@ function App() {
   const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
-  const [previewProjections, setPreviewProjections] = React.useState(null); // Track preview projections
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState(() => {
@@ -276,35 +275,51 @@ function App() {
       // Generate new projections based on current editing parameters
       const newProjections = generateSampleProjections(editingParameters);
 
-      // Only update existing scenarios - never modify baseline or create new ones automatically
-      if (activeScenario !== 'baseline') {
+      if (activeScenario === 'baseline') {
+        // For baseline, create a temporary working scenario
+        const workingScenario = {
+          id: 'working',
+          name: 'Working Changes',
+          description: 'Applied parameter changes - save as scenario to keep',
+          parameters: JSON.parse(JSON.stringify(editingParameters)),
+          projections: newProjections,
+          createdAt: new Date().toISOString(),
+          isTemporary: true
+        };
+
+        // Add or update the working scenario
+        const updatedScenarios = scenarios.filter(s => s.id !== 'working');
+        setScenarios([...updatedScenarios, workingScenario]);
+        setActiveScenario('working');
+      } else {
+        // Update existing scenario
         const updatedScenarios = scenarios.map(scenario => 
           scenario.id === activeScenario 
             ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
             : scenario
         );
         setScenarios(updatedScenarios);
-
-        setUnsavedChanges(false);
-        setPendingChanges({});
-        setPreviewProjections(null); // Clear the preview after applying changes
-
-        console.log('Applied changes to scenario:', activeScenario);
-      } else {
-        // For baseline, we don't apply changes - user must create a new scenario
-        console.log('Cannot apply changes to baseline - use scenario management to save as new scenario');
       }
+
+      setUnsavedChanges(false);
+      setPendingChanges({});
+
+      console.log('Applied changes to visualizations');
     } catch (error) {
       console.error('Error applying parameter changes:', error);
-      // Reset to previous state if application fails
-      setUnsavedChanges(true); // Keep unsaved state
+      setUnsavedChanges(true);
     }
   }, [editingParameters, activeScenario, scenarios]);
 
   const resetParameters = () => {
-    if (activeScenario === 'baseline') {
+    if (activeScenario === 'baseline' || activeScenario === 'working') {
       // Always use the immutable baseline parameters
       setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+      if (activeScenario === 'working') {
+        // Remove working scenario and return to baseline
+        setScenarios(scenarios.filter(s => s.id !== 'working'));
+        setActiveScenario('baseline');
+      }
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       if (scenario) {
@@ -314,16 +329,16 @@ function App() {
     }
     setUnsavedChanges(false);
     setPendingChanges({});
-    setPreviewProjections(null); // Also clear preview when parameters are reset
   };
 
   const resetToBaseline = () => {
     // Always use the immutable baseline parameters
     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+    // Remove working scenario if it exists
+    setScenarios(scenarios.filter(s => s.id !== 'working'));
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
-    setPreviewProjections(null); // Also clear preview when reset to baseline
   };
 
   const updateParameter = React.useCallback((paramType, year, occupation, value) => {
@@ -345,15 +360,6 @@ function App() {
         ...prev,
         [`${paramType}|${year}|${occupation}`]: true
       }));
-
-      // Generate a preview of the projections with error handling
-      try {
-        const projectedData = generateSampleProjections(newParams);
-        setPreviewProjections(projectedData);
-      } catch (projectionError) {
-        console.warn('Error generating preview projections:', projectionError);
-        // Don't fail the entire operation if preview fails
-      }
     } catch (error) {
       console.error('Error updating parameter:', error);
       // Reset to previous state if update fails
@@ -379,17 +385,18 @@ function App() {
 
       console.log('New scenario created:', newScenario);
 
-      const updatedScenarios = [...scenarios, newScenario];
+      // Remove working scenario if it exists and add the new permanent scenario
+      const filteredScenarios = scenarios.filter(s => s.id !== 'working');
+      const updatedScenarios = [...filteredScenarios, newScenario];
       setScenarios(updatedScenarios);
       setActiveScenario(newScenario.id);
       setShowScenarioModal(false);
       setUnsavedChanges(false);
-      setPreviewProjections(null); // Clear the preview after saving
+      setPendingChanges({});
 
       console.log('Updated scenarios list:', updatedScenarios);
     } catch (error) {
       console.error('Error creating new scenario:', error);
-      // Show error to user - could add a toast notification here
       alert('Error creating scenario. Please try again.');
     }
   }, [editingParameters, scenarios]);
@@ -401,18 +408,17 @@ function App() {
         return executiveData.projections;
       }
 
-      // Analyst View shows SAVED scenario projections only - not live editing parameters
+      // Analyst View shows applied scenario projections
       if (activeScenario === 'baseline') {
-        // Always show baseline projections until changes are applied
+        // Always show baseline projections
         return executiveData.projections;
       } else {
-        // If there are preview projections, show those, otherwise show the saved ones
+        // Show the saved scenario projections (including working scenario)
         const scenario = scenarios.find(s => s.id === activeScenario);
-        return previewProjections || scenario?.projections || executiveData.projections;
+        return scenario?.projections || executiveData.projections;
       }
     } catch (error) {
       console.error('Error getting current scenario projections:', error);
-      // Fallback to executive data
       return executiveData.projections;
     }
   };
@@ -558,19 +564,13 @@ function App() {
           <div className="flex items-center space-x-3">
             {unsavedChanges && (
               <>
-                <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
-                {activeScenario === 'baseline' ? (
-                  <span className="text-sm text-gray-600 italic">
-                    Go to Scenario Management tab to save as new scenario
-                  </span>
-                ) : (
-                  <button 
-                    onClick={applyParameterChanges}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-                  >
-                    Apply Changes
-                  </button>
-                )}
+                <span className="text-sm text-orange-600 font-medium">Parameters modified</span>
+                <button 
+                  onClick={applyParameterChanges}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                >
+                  Apply Changes
+                </button>
                 <button 
                   onClick={resetParameters}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
@@ -581,7 +581,7 @@ function App() {
             )}
             <button 
               onClick={resetToBaseline}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:blue-700 text-sm"
             >
               Load Baseline
             </button>
@@ -750,10 +750,11 @@ function App() {
                   console.log('Loading baseline parameters');
                   // Always use the immutable baseline parameters - create a fresh copy
                   setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                  // Remove working scenario if switching away
+                  setScenarios(scenarios.filter(s => s.id !== 'working'));
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
                   setPendingChanges({});
-                  setPreviewProjections(null); // Clear preview when switching scenarios
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
@@ -765,15 +766,14 @@ function App() {
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
                     setPendingChanges({});
-                    setPreviewProjections(null); // Clear preview when switching scenarios
                   } else {
                     console.error('Scenario not found or missing parameters:', scenarioId);
                     // Fallback to baseline if scenario is corrupted
                     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                    setScenarios(scenarios.filter(s => s.id !== 'working'));
                     setActiveScenario('baseline');
                     setUnsavedChanges(false);
                     setPendingChanges({});
-                    setPreviewProjections(null); // Clear preview when switching scenarios
                   }
                 }
               }}
@@ -782,37 +782,6 @@ function App() {
         </div>
       </div>
 
-      {/* Preview Banner */}
-      {previewProjections && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-blue-800">
-                Preview Mode: Visualizations show your adjusted parameters
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-blue-600">
-                {Object.keys(pendingChanges).length} parameter(s) changed
-              </span>
-              <button 
-                onClick={applyParameterChanges}
-                className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm"
-              >
-                Apply to {activeScenario === 'baseline' ? 'Create Scenario' : 'Update Scenario'}
-              </button>
-              <button 
-                onClick={resetParameters}
-                className="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Visualizations */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
@@ -820,12 +789,16 @@ function App() {
             <h3 className="text-xl font-semibold">
               Projected Workforce Gap Trends 
               <span className="text-sm font-normal text-gray-600 ml-2">
-                ({activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
+                ({activeScenario === 'baseline' 
+                  ? 'Baseline' 
+                  : activeScenario === 'working'
+                    ? 'Working Changes (unsaved)'
+                    : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
               </span>
             </h3>
-            {previewProjections && (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                PREVIEW
+            {activeScenario === 'working' && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                APPLIED CHANGES
               </span>
             )}
           </div>
@@ -838,9 +811,9 @@ function App() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold">Supply vs Demand Analysis</h3>
-            {previewProjections && (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                PREVIEW
+            {activeScenario === 'working' && (
+              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                APPLIED CHANGES
               </span>
             )}
           </div>
@@ -967,7 +940,7 @@ function App() {
             onClick={onCreateScenario}
             className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
           >
-            {activeScenario === 'baseline' && unsavedChanges ? 'Save Current Changes as New Scenario' : 'Create New Scenario'}
+            {activeScenario === 'working' ? 'Save as New Scenario' : 'Create New Scenario'}
           </button>
           <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
             Export Scenario
@@ -975,11 +948,11 @@ function App() {
         </div>
       </div>
 
-      {activeScenario === 'baseline' && unsavedChanges && (
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> You have unsaved changes to the baseline parameters. 
-            Click "Save Current Changes as New Scenario" above to create a new scenario with your current parameter adjustments.
+      {activeScenario === 'working' && (
+        <div className="p-4 bg-orange-50 rounded-lg">
+          <p className="text-sm text-orange-800">
+            <strong>Working Changes:</strong> You have applied parameter changes that are now visible in the visualizations. 
+            Click "Save as New Scenario" above to permanently save these changes, or load a different scenario to discard them.
           </p>
         </div>
       )}
