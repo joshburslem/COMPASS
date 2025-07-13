@@ -1,6 +1,41 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h2>
+          <p className="text-red-700 mb-4">An error occurred while rendering the application.</p>
+          <button 
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function App() {
   const [currentView, setCurrentView] = React.useState('executive');
   const [selectedYear, setSelectedYear] = React.useState(2024);
@@ -166,65 +201,103 @@ function App() {
   }
 
   function generateSampleProjections(parameters = null) {
-    const years = Array.from({length: 11}, (_, i) => 2024 + i);
-    const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
+    try {
+      const years = Array.from({length: 11}, (_, i) => 2024 + i);
+      const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
 
-    return years.reduce((acc, year) => {
-      acc[year] = {};
-      occupations.forEach(occ => {
-        let baseSupply = parameters ? parameters.supply[year][occ] : {
-          'Physicians': 2500,
-          'Nurse Practitioners': 800,
-          'Registered Nurses': 4200,
-          'Licensed Practical Nurses': 1800,
-          'Medical Office Assistants': 3200
-        }[occ];
+      return years.reduce((acc, year) => {
+        acc[year] = {};
+        occupations.forEach(occ => {
+          try {
+            let baseSupply = parameters && parameters.supply && parameters.supply[year] && parameters.supply[year][occ] 
+              ? parameters.supply[year][occ] 
+              : {
+                'Physicians': 2500,
+                'Nurse Practitioners': 800,
+                'Registered Nurses': 4200,
+                'Licensed Practical Nurses': 1800,
+                'Medical Office Assistants': 3200
+              }[occ];
 
-        if (parameters) {
-          // Calculate supply with all inflows and outflows
-          const inflows = parameters.educationalInflow[year][occ] + 
-                         parameters.internationalMigrants[year][occ] + 
-                         parameters.domesticMigrants[year][occ] + 
-                         parameters.reEntrants[year][occ];
-          const outflows = baseSupply * (parameters.retirementRate[year][occ] + parameters.attritionRate[year][occ]);
-          baseSupply = baseSupply + inflows - outflows;
+            if (parameters && parameters.supply && parameters.supply[year]) {
+              // Calculate supply with all inflows and outflows - with safety checks
+              const educationalInflow = parameters.educationalInflow?.[year]?.[occ] || 0;
+              const internationalMigrants = parameters.internationalMigrants?.[year]?.[occ] || 0;
+              const domesticMigrants = parameters.domesticMigrants?.[year]?.[occ] || 0;
+              const reEntrants = parameters.reEntrants?.[year]?.[occ] || 0;
+              const retirementRate = parameters.retirementRate?.[year]?.[occ] || 0;
+              const attritionRate = parameters.attritionRate?.[year]?.[occ] || 0;
+
+              const inflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
+              const outflows = baseSupply * (retirementRate + attritionRate);
+              baseSupply = Math.max(0, baseSupply + inflows - outflows); // Ensure non-negative
+            }
+
+            const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+            const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
+
+            const supply = Math.round(Math.max(0, parameters ? baseSupply : baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)));
+            const demand = Math.round(Math.max(0, baseDemand * yearMultiplier));
+
+            acc[year][occ] = {
+              supply: supply,
+              demand: demand,
+              gap: demand - supply
+            };
+          } catch (occupationError) {
+            console.warn(`Error processing occupation ${occ} for year ${year}:`, occupationError);
+            // Provide fallback values
+            acc[year][occ] = {
+              supply: 1000,
+              demand: 1100,
+              gap: 100
+            };
+          }
+        });
+        return acc;
+      }, {});
+    } catch (error) {
+      console.error('Error generating sample projections:', error);
+      // Return minimal fallback data
+      return {
+        2024: {
+          'Physicians': { supply: 2500, demand: 2750, gap: 250 },
+          'Nurse Practitioners': { supply: 800, demand: 880, gap: 80 },
+          'Registered Nurses': { supply: 4200, demand: 4620, gap: 420 },
+          'Licensed Practical Nurses': { supply: 1800, demand: 1980, gap: 180 },
+          'Medical Office Assistants': { supply: 3200, demand: 3520, gap: 320 }
         }
-
-        const baseDemand = baseSupply * 1.1; // 10% shortage baseline
-        const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
-
-        acc[year][occ] = {
-          supply: Math.round(parameters ? baseSupply : baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)),
-          demand: Math.round(baseDemand * yearMultiplier),
-          gap: 0
-        };
-        acc[year][occ].gap = acc[year][occ].demand - acc[year][occ].supply;
-      });
-      return acc;
-    }, {});
+      };
+    }
   }
 
   const applyParameterChanges = React.useCallback(() => {
-    // Generate new projections based on current editing parameters
-    const newProjections = generateSampleProjections(editingParameters);
+    try {
+      // Generate new projections based on current editing parameters
+      const newProjections = generateSampleProjections(editingParameters);
 
-    // Only update existing scenarios - never modify baseline or create new ones automatically
-    if (activeScenario !== 'baseline') {
-      const updatedScenarios = scenarios.map(scenario => 
-        scenario.id === activeScenario 
-          ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
-          : scenario
-      );
-      setScenarios(updatedScenarios);
+      // Only update existing scenarios - never modify baseline or create new ones automatically
+      if (activeScenario !== 'baseline') {
+        const updatedScenarios = scenarios.map(scenario => 
+          scenario.id === activeScenario 
+            ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
+            : scenario
+        );
+        setScenarios(updatedScenarios);
 
-      setUnsavedChanges(false);
-      setPendingChanges({});
-      setPreviewProjections(null); // Clear the preview after applying changes
+        setUnsavedChanges(false);
+        setPendingChanges({});
+        setPreviewProjections(null); // Clear the preview after applying changes
 
-      console.log('Applied changes to scenario:', activeScenario);
-    } else {
-      // For baseline, we don't apply changes - user must create a new scenario
-      console.log('Cannot apply changes to baseline - use scenario management to save as new scenario');
+        console.log('Applied changes to scenario:', activeScenario);
+      } else {
+        // For baseline, we don't apply changes - user must create a new scenario
+        console.log('Cannot apply changes to baseline - use scenario management to save as new scenario');
+      }
+    } catch (error) {
+      console.error('Error applying parameter changes:', error);
+      // Reset to previous state if application fails
+      setUnsavedChanges(true); // Keep unsaved state
     }
   }, [editingParameters, activeScenario, scenarios]);
 
@@ -254,66 +327,93 @@ function App() {
   };
 
   const updateParameter = (paramType, year, occupation, value) => {
-    // Create a completely new parameter object to avoid any reference issues
-    const newParams = JSON.parse(JSON.stringify(editingParameters));
-    if (!newParams[paramType][year]) {
-      newParams[paramType][year] = {};
+    try {
+      // Create a completely new parameter object to avoid any reference issues
+      const newParams = JSON.parse(JSON.stringify(editingParameters));
+      if (!newParams[paramType]) {
+        newParams[paramType] = {};
+      }
+      if (!newParams[paramType][year]) {
+        newParams[paramType][year] = {};
+      }
+      newParams[paramType][year][occupation] = parseFloat(value) || 0;
+      setEditingParameters(newParams);
+      setUnsavedChanges(true);
+
+      // Track the specific parameter change
+      setPendingChanges(prev => ({
+        ...prev,
+        [`${paramType}|${year}|${occupation}`]: true
+      }));
+
+      // Generate a preview of the projections
+      try {
+        const projectedData = generateSampleProjections(newParams);
+        setPreviewProjections(projectedData);
+      } catch (projectionError) {
+        console.warn('Error generating preview projections:', projectionError);
+        // Don't fail the entire operation if preview fails
+      }
+    } catch (error) {
+      console.error('Error updating parameter:', error);
+      // Reset to previous state if update fails
+      setEditingParameters(prev => prev);
     }
-    newParams[paramType][year][occupation] = parseFloat(value) || 0;
-    setEditingParameters(newParams);
-    setUnsavedChanges(true);
-
-    // Track the specific parameter change
-    setPendingChanges(prev => ({
-      ...prev,
-      [`${paramType}|${year}|${occupation}`]: true
-    }));
-
-    // Generate a preview of the projections
-    const projectedData = generateSampleProjections(newParams);
-    setPreviewProjections(projectedData);
   };
 
   const createNewScenario = (scenarioData) => {
-    console.log('Creating scenario with data:', scenarioData);
-    console.log('Current editing parameters:', editingParameters);
+    try {
+      console.log('Creating scenario with data:', scenarioData);
+      console.log('Current editing parameters:', editingParameters);
 
-    const scenarioProjections = generateSampleProjections(editingParameters);
+      const scenarioProjections = generateSampleProjections(editingParameters);
 
-    const newScenario = {
-      id: Date.now().toString(),
-      name: scenarioData.name,
-      description: scenarioData.description,
-      parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
-      projections: scenarioProjections,
-      createdAt: new Date().toISOString()
-    };
+      const newScenario = {
+        id: Date.now().toString(),
+        name: scenarioData.name || 'Unnamed Scenario',
+        description: scenarioData.description || '',
+        parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
+        projections: scenarioProjections,
+        createdAt: new Date().toISOString()
+      };
 
-    console.log('New scenario created:', newScenario);
+      console.log('New scenario created:', newScenario);
 
-    const updatedScenarios = [...scenarios, newScenario];
-    setScenarios(updatedScenarios);
-    setActiveScenario(newScenario.id);
-    setShowScenarioModal(false);
-    setUnsavedChanges(false);
-    setPreviewProjections(null); // Clear the preview after saving
+      const updatedScenarios = [...scenarios, newScenario];
+      setScenarios(updatedScenarios);
+      setActiveScenario(newScenario.id);
+      setShowScenarioModal(false);
+      setUnsavedChanges(false);
+      setPreviewProjections(null); // Clear the preview after saving
 
-    console.log('Updated scenarios list:', updatedScenarios);
+      console.log('Updated scenarios list:', updatedScenarios);
+    } catch (error) {
+      console.error('Error creating new scenario:', error);
+      // Show error to user - could add a toast notification here
+      alert('Error creating scenario. Please try again.');
+    }
   };
 
   const getCurrentScenarioProjections = () => {
-    if (currentView === 'executive') {
-      // Executive View ALWAYS shows baseline projections - never affected by analyst changes
-      return executiveData.projections;
-    }
+    try {
+      if (currentView === 'executive') {
+        // Executive View ALWAYS shows baseline projections - never affected by analyst changes
+        return executiveData.projections;
+      }
 
-    // Analyst View shows SAVED scenario projections only - not live editing parameters
-    if (activeScenario === 'baseline') {
-      // Always show baseline projections until changes are applied
+      // Analyst View shows SAVED scenario projections only - not live editing parameters
+      if (activeScenario === 'baseline') {
+        // Always show baseline projections until changes are applied
+        return executiveData.projections;
+      } else {
+        // If there are preview projections, show those, otherwise show the saved ones
+        const scenario = scenarios.find(s => s.id === activeScenario);
+        return previewProjections || scenario?.projections || executiveData.projections;
+      }
+    } catch (error) {
+      console.error('Error getting current scenario projections:', error);
+      // Fallback to executive data
       return executiveData.projections;
-    } else {
-      // If there are preview projections, show those, otherwise show the saved ones
-      return previewProjections || scenarios.find(s => s.id === activeScenario)?.projections || executiveData.projections;
     }
   };
 
@@ -780,7 +880,8 @@ function App() {
                       type="number"
                       step="0.001"
                       value={current}
-                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">
@@ -1356,7 +1457,9 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentView === 'executive' ? <ExecutiveView /> : <AnalystView />}
+        <ErrorBoundary>
+          {currentView === 'executive' ? <ExecutiveView /> : <AnalystView />}
+        </ErrorBoundary>
       </main>
 
       {/* Modals */}
