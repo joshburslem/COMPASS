@@ -10,7 +10,7 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       port: 5001,
-      host: 'localhost'
+      host: '0.0.0.0'
     }
   }
 })
