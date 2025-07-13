@@ -274,6 +274,9 @@ function App() {
   };
 
   const createNewScenario = (scenarioData) => {
+    console.log('Creating scenario with data:', scenarioData);
+    console.log('Current editing parameters:', editingParameters);
+    
     const newScenario = {
       id: Date.now().toString(),
       name: scenarioData.name,
@@ -281,11 +284,16 @@ function App() {
       parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
       createdAt: new Date().toISOString()
     };
+    
+    console.log('New scenario created:', newScenario);
+    
     const updatedScenarios = [...scenarios, newScenario];
     setScenarios(updatedScenarios);
     setActiveScenario(newScenario.id);
     setShowScenarioModal(false);
     setUnsavedChanges(false);
+    
+    console.log('Updated scenarios list:', updatedScenarios);
   };
 
   const toggleOccupation = (occupation) => {
@@ -603,16 +611,25 @@ function App() {
               activeScenario={activeScenario}
               onCreateScenario={() => setShowScenarioModal(true)}
               onSelectScenario={(scenarioId) => {
+                console.log('Loading scenario:', scenarioId);
+                console.log('Available scenarios:', scenarios);
+                
                 if (scenarioId === 'baseline') {
+                  console.log('Loading baseline parameters');
                   setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
+                  console.log('Found scenario:', scenario);
+                  
                   if (scenario) {
+                    console.log('Loading scenario parameters:', scenario.parameters);
                     setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
+                  } else {
+                    console.error('Scenario not found:', scenarioId);
                   }
                 }
               }}
@@ -1152,6 +1169,12 @@ function App() {
       }
     };
 
+    const handleCancel = () => {
+      setShowScenarioModal(false);
+      setScenarioName('');
+      setScenarioDescription('');
+    };
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-96">
@@ -1165,6 +1188,7 @@ function App() {
                 onChange={(e) => setScenarioName(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2" 
                 placeholder="e.g., Increased Training Seats" 
+                autoFocus
               />
             </div>
             <div>
@@ -1179,11 +1203,7 @@ function App() {
             </div>
             <div className="flex space-x-2">
               <button 
-                onClick={() => {
-                  setShowScenarioModal(false);
-                  setScenarioName('');
-                  setScenarioDescription('');
-                }}
+                onClick={handleCancel}
                 className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
               >
                 Cancel
