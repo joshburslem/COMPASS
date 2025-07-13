@@ -14,6 +14,8 @@ function App() {
   const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
+  const [livePreview, setLivePreview] = React.useState(false);
+  const [livePreviewProjections, setLivePreviewProjections] = React.useState(null);
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState(() => {
@@ -215,16 +217,29 @@ function App() {
           : scenario
       );
       setScenarios(updatedScenarios);
-      
+
       setUnsavedChanges(false);
       setPendingChanges({});
-      
+
       console.log('Applied changes to scenario:', activeScenario);
     } else {
       // For baseline, we don't apply changes - user must create a new scenario
       console.log('Cannot apply changes to baseline - use scenario management to save as new scenario');
     }
+    setLivePreview(false);
+    setLivePreviewProjections(null);
   }, [editingParameters, activeScenario, scenarios]);
+
+  const generateLivePreview = () => {
+    const newProjections = generateSampleProjections(editingParameters);
+    setLivePreviewProjections(newProjections);
+    setLivePreview(true);
+  };
+
+  const clearLivePreview = () => {
+    setLivePreviewProjections(null);
+    setLivePreview(false);
+  };
 
   const resetParameters = () => {
     if (activeScenario === 'baseline') {
@@ -239,6 +254,7 @@ function App() {
     }
     setUnsavedChanges(false);
     setPendingChanges({});
+    clearLivePreview();
   };
 
   const resetToBaseline = () => {
@@ -247,6 +263,7 @@ function App() {
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
+    clearLivePreview();
   };
 
   const updateParameter = (paramType, year, occupation, value) => {
@@ -269,9 +286,9 @@ function App() {
   const createNewScenario = (scenarioData) => {
     console.log('Creating scenario with data:', scenarioData);
     console.log('Current editing parameters:', editingParameters);
-    
+
     const scenarioProjections = generateSampleProjections(editingParameters);
-    
+
     const newScenario = {
       id: Date.now().toString(),
       name: scenarioData.name,
@@ -280,15 +297,16 @@ function App() {
       projections: scenarioProjections,
       createdAt: new Date().toISOString()
     };
-    
+
     console.log('New scenario created:', newScenario);
-    
+
     const updatedScenarios = [...scenarios, newScenario];
     setScenarios(updatedScenarios);
     setActiveScenario(newScenario.id);
     setShowScenarioModal(false);
     setUnsavedChanges(false);
-    
+    clearLivePreview();
+
     console.log('Updated scenarios list:', updatedScenarios);
   };
 
@@ -297,8 +315,12 @@ function App() {
       // Executive View ALWAYS shows baseline projections - never affected by analyst changes
       return executiveData.projections;
     }
-    
-    // Analyst View shows SAVED scenario projections only - not live editing parameters
+
+    // Analyst View - show live preview if available, otherwise show saved projections
+    if (livePreviewProjections) {
+      return livePreviewProjections;
+    }
+
     if (activeScenario === 'baseline') {
       // Always show baseline projections until changes are applied
       return executiveData.projections;
@@ -470,6 +492,15 @@ function App() {
                 </button>
               </>
             )}
+              {/* Apply Changes Button for Live Preview */}
+            {activeScenario !== 'baseline' && (
+              <button
+                onClick={generateLivePreview}
+                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 text-sm"
+              >
+                {livePreview ? 'Update Preview' : 'Apply Changes for Preview'}
+              </button>
+            )}
             <button 
               onClick={resetToBaseline}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
@@ -636,7 +667,9 @@ function App() {
               onSelectScenario={(scenarioId) => {
                 console.log('Loading scenario:', scenarioId);
                 console.log('Available scenarios:', scenarios);
-                
+
+                clearLivePreview(); // Clear any live preview when switching scenarios
+
                 if (scenarioId === 'baseline') {
                   console.log('Loading baseline parameters');
                   // Always use the immutable baseline parameters - create a fresh copy
@@ -647,7 +680,7 @@ function App() {
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
-                  
+
                   if (scenario && scenario.parameters) {
                     console.log('Loading scenario parameters:', scenario.parameters);
                     // Create a fresh copy of scenario parameters to avoid reference issues
@@ -758,22 +791,7 @@ function App() {
             {categories.map(cat => {
               const baseline = baselineParameters[selectedParameterYear][cat];
               const current = parameters[selectedParameterYear][cat];
-              const change = ((current - baseline) / baseline * 100).toFixed(1);
-
-              return (
-                <div key={cat} className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">{cat}</label>
-                  <div className="space-y-1">
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={current}
-                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">
-                        Baseline: {(baseline * 100).toFixed(1)}%
+              const change = ((current - baseline) / baseline * 1baseline * 100).toFixed(1)}%`
                       </span>
                       <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
@@ -801,59 +819,60 @@ function App() {
           >
             <option value="baseline">Baseline</option>
             {scenarios.map(scenario => (
-              <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
+              
+                {scenario.name}
+              
             ))}
           </select>
         </div>
-        <div className="flex items-end space-x-2">
-          <button 
+        
             onClick={onCreateScenario}
             className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
           >
             {activeScenario === 'baseline' && unsavedChanges ? 'Save Current Changes as New Scenario' : 'Create New Scenario'}
-          </button>
-          <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
+          
+          
             Export Scenario
-          </button>
-        </div>
-      </div>
+          
+        
       
+
       {activeScenario === 'baseline' && unsavedChanges && (
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> You have unsaved changes to the baseline parameters. 
-            Click "Save Current Changes as New Scenario" above to create a new scenario with your current parameter adjustments.
-          </p>
-        </div>
-      )}
+        
+          
+            
+              Click "Save Current Changes as New Scenario" above to create a new scenario with your current parameter adjustments.
+            
+          
+        
+      
 
       {scenarios.length > 0 && (
-        <div className="mt-6">
-          <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
-          <div className="space-y-2">
+        
+          
+            Saved Scenarios
+          
+          
             {scenarios.map(scenario => (
-              <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{scenario.name}</p>
-                  <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => onSelectScenario(scenario.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Load
-                  </button>
-                  <button className="text-red-600 hover:text-red-800 text-sm font-medium">
-                    Delete
-                  </button>
-                </div>
-              </div>
+              
+                
+                  
+                    {scenario.name}
+                    {scenario.description || 'No description'}
+                  
+                  
+                    
+                      Load
+                      Delete
+                    
+                  
+                
+              
             ))}
-          </div>
-        </div>
-      )}
-    </div>
+          
+        
+      
+    
   );
 
   const ParameterImpactChart = ({ parameters }) => {
@@ -869,23 +888,20 @@ function App() {
     }));
 
     return (
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={impactData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="occupation" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="educationalInflow" stackId="positive" fill="#10B981" name="Education" />
-            <Bar dataKey="internationalMigrants" stackId="positive" fill="#3B82F6" name="Int'l Migration" />
-            <Bar dataKey="domesticMigrants" stackId="positive" fill="#6366F1" name="Dom. Migration" />
-            <Bar dataKey="reEntrants" stackId="positive" fill="#8B5CF6" name="Re-Entrants" />
-            <Bar dataKey="retirementImpact" stackId="negative" fill="#EF4444" name="Retirement" />
-            <Bar dataKey="attritionImpact" stackId="negative" fill="#F59E0B" name="Attrition" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      
+        
+          
+            
+            
+            
+            
+            
+            
+            
+            
+          
+        
+      
     );
   };
 
@@ -911,69 +927,55 @@ function App() {
     const CustomTooltip = ({ active, payload, label }) => {
       if (active && payload && payload.length) {
         return (
-          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-            <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
+          
+
+            {`Year: ${label}`}
             {payload.map((entry, index) => (
-              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                {`${entry.name}: ${entry.value.toLocaleString()} FTE`}
-              </p>
+              {`${entry.name}: ${entry.value.toLocaleString()} FTE`}
             ))}
-          </div>
+          
+
         );
       }
       return null;
     };
 
     return (
-      <div className="h-96 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart 
-            data={chartData} 
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          >
-            <defs>
-              {selectedOccupations.map(occ => (
-                <linearGradient key={`gradient-${occ}`} id={`gradient-${occ}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.1}/>
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-            <XAxis 
-              dataKey="year" 
-              stroke="#6B7280"
-              tick={{ fill: '#6B7280', fontSize: 12 }}
-            />
-            <YAxis 
-              stroke="#6B7280"
-              tick={{ fill: '#6B7280', fontSize: 12 }}
-              label={{ value: 'Workforce Gap (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="bottom" 
-              height={36}
-              iconType="line"
-              wrapperStyle={{ paddingTop: '20px' }}
-            />
-            {selectedOccupations.map(occ => (
-              <Line
-                key={occ}
-                type="monotone"
-                dataKey={occ}
-                stroke={colors[occ] || '#6B7280'}
-                strokeWidth={3}
-                fill={`url(#gradient-${occ})`}
-                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, strokeWidth: 2 }}
-                animationDuration={1500}
-                animationEasing="ease-in-out"
-              />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      
+        
+          
+            
+            
+              
+                
+              
+              
+                
+              
+            
+            
+              
+              
+                
+                  
+                  
+                
+              
+            
+              
+                
+                
+                
+                
+                
+                
+                
+                
+              
+            
+          
+        
+      
     );
   };
 
@@ -981,79 +983,54 @@ function App() {
     const years = [currentYear - 1, currentYear, currentYear + 1].filter(y => data[y]);
 
     return (
-      <div className="space-y-4">
-        {selectedOccupations.map(occ => {
-          const prevGap = data[currentYear - 1]?.[occ]?.gap || 0;
-          const currGap = data[currentYear]?.[occ]?.gap || 0;
-          const nextGap = data[currentYear + 1]?.[occ]?.gap || 0;
+      
 
-          const changeFromPrev = currGap - prevGap;
-          const changeToNext = nextGap - currGap;
-
-          return (
-            <div key={occ} className="border-b pb-3">
-              <h4 className="font-medium text-gray-800">{occ}</h4>
-              <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
-                <div>
-                  <span className="text-gray-600">Previous:</span>
-                  <span className="ml-2 font-semibold">{prevGap}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Current:</span>
-                  <span className="ml-2 font-semibold text-blue-600">{currGap}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Next:</span>
-                  <span className="ml-2 font-semibold">{nextGap}</span>
-                </div>
-              </div>
-              <div className="flex items-center mt-2 text-xs">
-                <span className={`flex items-center ${changeToNext > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {changeToNext > 0 ? '↑' : '↓'} {Math.abs(changeToNext)} FTE change expected
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            {occ}
+            
+              
+                Previous:
+                
+              
+              
+                Current:
+                
+              
+              
+                Next:
+                
+              
+            
+            
+              {changeToNext > 0 ? '↑' : '↓'} {Math.abs(changeToNext)} FTE change expected
+            
+          
+        
+      
     );
   };
 
   const SupplyDemandComparison = ({ data, selectedOccupations }) => {
-    if (!data) return <div>No data available</div>;
+    if (!data) return No data available;
 
     return (
-      <div className="space-y-4">
-        {selectedOccupations.map(occ => {
-          const values = data[occ];
-          if (!values) return null;
+      
 
-          const fillPercentage = Math.min((values.supply / values.demand) * 100, 100);
-
-          return (
-            <div key={occ} className="space-y-2">
-              <div className="flex justify-between items-center">
-                <h4 className="font-medium text-gray-800">{occ}</h4>
-                <span className={`text-sm font-semibold ${values.gap > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  Gap: {values.gap > 0 ? '+' : ''}{values.gap} FTE
-                </span>
-              </div>
-              <div className="relative">
-                <div className="bg-gray-200 rounded-full h-8 overflow-hidden">
-                  <div 
-                    className="bg-blue-500 h-full rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${fillPercentage}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between mt-1 text-xs text-gray-600">
-                  <span>Supply: {values.supply}</span>
-                  <span>Demand: {values.demand}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            {occ}
+            
+              Gap: {values.gap > 0 ? '+' : ''}{values.gap} FTE
+            
+            
+              
+                
+              
+              
+                Supply: {values.supply}
+                Demand: {values.demand}
+              
+            
+          
+        
+      
     );
   };
 
@@ -1090,35 +1067,16 @@ function App() {
     const insights = calculateInsights();
 
     return (
-      <div className="space-y-3">
-        {insights.map((insight, index) => (
-          <div 
-            key={index}
-            className={`p-4 rounded-lg flex items-start space-x-3 ${
-              insight.type === 'critical' ? 'bg-red-50' : 'bg-yellow-50'
-            }`}
-          >
-            <div className={`flex-shrink-0 ${
-              insight.type === 'critical' ? 'text-red-600' : 'text-yellow-600'
-            }`}>
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className={`text-sm font-medium ${
-                insight.type === 'critical' ? 'text-red-800' : 'text-yellow-800'
-              }`}>
-                {insight.message}
-              </p>
-            </div>
-          </div>
+      
+
+            {insight.message}
+          
         ))}
 
         {insights.length === 0 && (
-          <p className="text-gray-600">No critical insights for selected occupations.</p>
+          No critical insights for selected occupations.
         )}
-      </div>
+      
     );
   };
 
@@ -1134,74 +1092,69 @@ function App() {
     });
 
     return (
-      <div className="h-96 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis />
-            <Tooltip />
-            <Area type="monotone" dataKey="demand" stackId="1" stroke="#EF4444" fill="#FEE2E2" name="Total Demand" />
-            <Area type="monotone" dataKey="supply" stackId="2" stroke="#3B82F6" fill="#DBEAFE" name="Total Supply" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      
+        
+          
+            
+            
+            
+            
+          
+        
+      
     );
   };
 
   const PopulationSegmentAnalysis = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+    
+
         {workforceData.populationSegments.healthStatus.map(status => (
-          <div key={status} className="text-center p-4 bg-gray-50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
+          
+            
               {Math.floor(Math.random() * 30 + 10)}%
-            </div>
-            <div className="text-sm text-gray-600">{status}</div>
-          </div>
+            
+            {status}
+          
         ))}
-      </div>
-      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-        <p className="text-sm text-blue-800">
+      
+      
+        
           Population health segmentation drives service demand projections. 
           Chronic conditions are expected to increase by 22% over the forecast period.
-        </p>
-      </div>
-    </div>
+        
+      
+    
   );
 
   const DataImportModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96">
-        <h3 className="text-lg font-semibold mb-4">Import Data</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Data Type</label>
-            <select className="w-full border border-gray-300 rounded-md px-3 py-2">
-              <option>Population Data</option>
-              <option>Workforce Supply Data</option>
-              <option>Service Utilization Data</option>
-              <option>Health Status Data</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">File Upload</label>
-            <input type="file" accept=".csv,.xlsx,.xls" className="w-full border border-gray-300 rounded-md px-3 py-2" />
-          </div>
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => setShowDataImport(false)}
-              className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-            <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
+    
+
+        
+          Import Data
+          
+            
+              Data Type
+              
+                Population Data
+                Workforce Supply Data
+                Service Utilization Data
+                Health Status Data
+              
+            
+            
+              File Upload
+              
+            
+            
+              
+                Cancel
+              
               Import
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+            
+          
+        
+      
+    
   );
 
   const ScenarioModal = () => {
@@ -1233,125 +1186,87 @@ function App() {
     };
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-96">
-          <h3 className="text-lg font-semibold mb-4">Create New Scenario</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Scenario Name</label>
-              <input 
-                type="text" 
-                value={scenarioName}
-                onChange={(e) => setScenarioName(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                placeholder="e.g., Increased Training Seats" 
-                autoFocus
-                maxLength={50}
-              />
-              <p className="text-xs text-gray-500 mt-1">{scenarioName.length}/50 characters</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
-              <textarea 
-                value={scenarioDescription}
-                onChange={(e) => setScenarioDescription(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                rows="3" 
-                placeholder="Describe the scenario changes..."
-                maxLength={200}
-              ></textarea>
-              <p className="text-xs text-gray-500 mt-1">{scenarioDescription.length}/200 characters</p>
-            </div>
-            <div className="flex space-x-2">
-              <button 
-                onClick={handleCancel}
-                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
-              >
+      
+
+        
+          Create New Scenario
+          
+            
+              Scenario Name
+              
+              
+                {scenarioName.length}/50 characters
+              
+            
+            
+              Description (Optional)
+              
+              
+                {scenarioDescription.length}/200 characters
+              
+            
+            
+              
                 Cancel
-              </button>
-              <button 
-                onClick={handleCreate}
-                disabled={!scenarioName.trim()}
-                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
+              
+              
                 Create Scenario
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+              
+            
+          
+        
+      
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Nova Scotia Primary Care Workforce Planning</h1>
-              <p className="text-sm text-gray-600">Multi-Professional Needs-Based Analytics Dashboard</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <select 
-                value={selectedYear} 
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-md px-3 py-2"
-              >
+    
+
+      
+        
+          
+            
+              Nova Scotia Primary Care Workforce Planning
+              Multi-Professional Needs-Based Analytics Dashboard
+            
+            
+              
                 {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
+                  {year}
                 ))}
-              </select>
-              <button 
-                onClick={() => setShowDataImport(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
+              
+              
                 Import Data
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+              
+            
+          
+        
+      
 
-      {/* Navigation */}
-      <nav className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setCurrentView('executive')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                currentView === 'executive' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
+      
+        
+          
+            
               Executive View
-            </button>
-            <button
-              onClick={() => setCurrentView('analyst')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                currentView === 'analyst' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
+            
+            
               Analyst View
-            </button>
-          </div>
-        </div>
-      </nav>
+            
+          
+        
+      
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentView === 'executive' ? <ExecutiveView /> : <AnalystView />}
-      </main>
+      
+        {currentView === 'executive' ?  : }
+      
 
-      {/* Modals */}
-      {showDataImport && <DataImportModal />}
-      {showScenarioModal && <ScenarioModal />}
-    </div>
+      
+        
+      
+      
+        
+      
+    
   );
 }
 
