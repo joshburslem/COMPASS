@@ -271,10 +271,10 @@ function App() {
     }
   }
 
-  const applyParameterChanges = React.useCallback(() => {
+  const applyParameterChanges = React.useCallback(async () => {
     try {
       // Generate new projections based on current editing parameters
-      const newProjections = generateSampleProjections(editingParameters);
+      const newProjections = await Promise.resolve(generateSampleProjections(editingParameters));
 
       // Only update existing scenarios - never modify baseline or create new ones automatically
       if (activeScenario !== 'baseline') {
@@ -326,7 +326,7 @@ function App() {
     setPreviewProjections(null); // Also clear preview when reset to baseline
   };
 
-  const updateParameter = (paramType, year, occupation, value) => {
+  const updateParameter = React.useCallback((paramType, year, occupation, value) => {
     try {
       // Create a completely new parameter object to avoid any reference issues
       const newParams = JSON.parse(JSON.stringify(editingParameters));
@@ -346,27 +346,29 @@ function App() {
         [`${paramType}|${year}|${occupation}`]: true
       }));
 
-      // Generate a preview of the projections
-      try {
-        const projectedData = generateSampleProjections(newParams);
-        setPreviewProjections(projectedData);
-      } catch (projectionError) {
-        console.warn('Error generating preview projections:', projectionError);
-        // Don't fail the entire operation if preview fails
-      }
+      // Generate a preview of the projections with error handling
+      Promise.resolve()
+        .then(() => generateSampleProjections(newParams))
+        .then(projectedData => {
+          setPreviewProjections(projectedData);
+        })
+        .catch(projectionError => {
+          console.warn('Error generating preview projections:', projectionError);
+          // Don't fail the entire operation if preview fails
+        });
     } catch (error) {
       console.error('Error updating parameter:', error);
       // Reset to previous state if update fails
       setEditingParameters(prev => prev);
     }
-  };
+  }, [editingParameters]);
 
-  const createNewScenario = (scenarioData) => {
+  const createNewScenario = React.useCallback(async (scenarioData) => {
     try {
       console.log('Creating scenario with data:', scenarioData);
       console.log('Current editing parameters:', editingParameters);
 
-      const scenarioProjections = generateSampleProjections(editingParameters);
+      const scenarioProjections = await Promise.resolve(generateSampleProjections(editingParameters));
 
       const newScenario = {
         id: Date.now().toString(),
@@ -392,7 +394,7 @@ function App() {
       // Show error to user - could add a toast notification here
       alert('Error creating scenario. Please try again.');
     }
-  };
+  }, [editingParameters, scenarios]);
 
   const getCurrentScenarioProjections = () => {
     try {
@@ -1397,9 +1399,10 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-100">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
@@ -1465,7 +1468,8 @@ function App() {
       {/* Modals */}
       {showDataImport && <DataImportModal />}
       {showScenarioModal && <ScenarioModal />}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 
