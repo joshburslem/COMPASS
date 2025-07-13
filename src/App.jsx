@@ -46,6 +46,11 @@ function App() {
     JSON.parse(JSON.stringify(workforceData.baselineParameters))
   );
 
+  // Display parameters - what visualizations actually show (only updates when changes are applied)
+  const [displayParameters, setDisplayParameters] = React.useState(() => 
+    JSON.parse(JSON.stringify(workforceData.baselineParameters))
+  );
+
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
     const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
@@ -207,6 +212,9 @@ function App() {
     // Generate new projections based on current editing parameters
     const newProjections = generateSampleProjections(editingParameters);
 
+    // Update display parameters to show the applied changes
+    setDisplayParameters(JSON.parse(JSON.stringify(editingParameters)));
+
     // Only update existing scenarios - never modify baseline or create new ones automatically
     if (activeScenario !== 'baseline') {
       const updatedScenarios = scenarios.map(scenario => 
@@ -230,11 +238,13 @@ function App() {
     if (activeScenario === 'baseline') {
       // Always use the immutable baseline parameters
       setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+      setDisplayParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       if (scenario) {
         // Use the scenario's saved parameters
         setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
+        setDisplayParameters(JSON.parse(JSON.stringify(scenario.parameters)));
       }
     }
     setUnsavedChanges(false);
@@ -244,6 +254,7 @@ function App() {
   const resetToBaseline = () => {
     // Always use the immutable baseline parameters
     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+    setDisplayParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
@@ -298,13 +309,13 @@ function App() {
       return executiveData.projections;
     }
     
-    // Analyst View shows SAVED scenario projections only - not live editing parameters
+    // Analyst View shows projections based on display parameters (only updates when applied)
     if (activeScenario === 'baseline') {
-      // Always show baseline projections until changes are applied
-      return executiveData.projections;
+      // Show projections based on current display parameters
+      return generateSampleProjections(displayParameters);
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
-      return scenario?.projections || executiveData.projections;
+      return scenario?.projections || generateSampleProjections(displayParameters);
     }
   };
 
@@ -641,6 +652,7 @@ function App() {
                   console.log('Loading baseline parameters');
                   // Always use the immutable baseline parameters - create a fresh copy
                   setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                  setDisplayParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
                   setPendingChanges({});
@@ -652,6 +664,7 @@ function App() {
                     console.log('Loading scenario parameters:', scenario.parameters);
                     // Create a fresh copy of scenario parameters to avoid reference issues
                     setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
+                    setDisplayParameters(JSON.parse(JSON.stringify(scenario.parameters)));
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
                     setPendingChanges({});
@@ -659,6 +672,7 @@ function App() {
                     console.error('Scenario not found or missing parameters:', scenarioId);
                     // Fallback to baseline if scenario is corrupted
                     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                    setDisplayParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                     setActiveScenario('baseline');
                     setUnsavedChanges(false);
                     setPendingChanges({});
@@ -694,11 +708,7 @@ function App() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Parameter Impact Analysis</h3>
-          <ParameterImpactChart parameters={
-            activeScenario === 'baseline' 
-              ? workforceData.baselineParameters 
-              : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-          } />
+          <ParameterImpactChart parameters={displayParameters} />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
