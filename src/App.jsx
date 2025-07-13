@@ -12,6 +12,7 @@ function App() {
   const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
   const [activeParameterTab, setActiveParameterTab] = React.useState('supply');
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
+  const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState({
@@ -198,21 +199,55 @@ function App() {
     }, {});
   }
 
-  const applyParameterChanges = () => {
-    const newProjections = generateSampleProjections(editingParameters);
+  const applyParameterChanges = React.useCallback(() => {
+    // Only update projections for the specific parameters that were changed
+    const newProjections = { ...workforceData.projections };
+
+    // Only recalculate for the specific changes tracked in pendingChanges
+    Object.keys(pendingChanges).forEach(changeKey => {
+      const [paramType, year, occupation] = changeKey.split('|');
+
+      if (!newProjections[year]) newProjections[year] = {};
+      if (!newProjections[year][occupation]) {
+        newProjections[year][occupation] = { ...workforceData.projections[year][occupation] };
+      }
+
+      // Recalculate only this specific occupation/year
+      let baseSupply = editingParameters.supply[year][occupation];
+      const inflows = editingParameters.educationalInflow[year][occupation] + 
+                     editingParameters.internationalMigrants[year][occupation] + 
+                     editingParameters.domesticMigrants[year][occupation] + 
+                     editingParameters.reEntrants[year][occupation];
+      const outflows = baseSupply * (editingParameters.retirementRate[year][occupation] + 
+                                   editingParameters.attritionRate[year][occupation]);
+
+      const newSupply = Math.round(baseSupply + inflows - outflows);
+      const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+      const yearMultiplier = 1 + (parseInt(year) - 2024) * 0.02; // 2% annual growth
+      const newDemand = Math.round(baseDemand * yearMultiplier);
+
+      newProjections[year][occupation] = {
+        supply: newSupply,
+        demand: newDemand,
+        gap: newDemand - newSupply
+      };
+    });
+
     setWorkforceData({
       ...workforceData,
       parameters: editingParameters,
       projections: newProjections
     });
     setUnsavedChanges(false);
+    setPendingChanges({}); // Clear pending changes
 
     // Note: Executive view remains unchanged
-  };
+  }, [editingParameters, workforceData.projections, pendingChanges]);
 
   const resetParameters = () => {
     setEditingParameters(workforceData.parameters);
     setUnsavedChanges(false);
+    setPendingChanges({});
   };
 
   const updateParameter = (paramType, year, occupation, value) => {
@@ -223,6 +258,12 @@ function App() {
     newParams[paramType][year][occupation] = parseFloat(value) || 0;
     setEditingParameters(newParams);
     setUnsavedChanges(true);
+
+    // Track the specific parameter change
+    setPendingChanges(prev => ({
+      ...prev,
+      [`${paramType}|${year}|${occupation}`]: true
+    }));
   };
 
   const createNewScenario = (scenarioData) => {
