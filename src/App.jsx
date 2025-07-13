@@ -604,13 +604,13 @@ function App() {
               onCreateScenario={() => setShowScenarioModal(true)}
               onSelectScenario={(scenarioId) => {
                 if (scenarioId === 'baseline') {
-                  setEditingParameters(workforceData.baselineParameters);
+                  setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   if (scenario) {
-                    setEditingParameters(scenario.parameters);
+                    setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
                   }
