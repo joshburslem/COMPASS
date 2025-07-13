@@ -1,6 +1,237 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 
+// Move components outside App to prevent recreation on each render
+const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
+  const years = Object.keys(parameters).sort();
+  const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
+
+  const toggleYear = React.useCallback((year) => {
+    setExpandedYears(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(year)) {
+        newExpanded.delete(year);
+      } else {
+        newExpanded.add(year);
+      }
+      return newExpanded;
+    });
+  }, []);
+
+  const handleInputChange = React.useCallback((year, occ, value) => {
+    onUpdate(parameterType, year, occ, value);
+  }, [onUpdate, parameterType]);
+
+  const [focusedInput, setFocusedInput] = React.useState(null);
+
+  return (
+    <div>
+      <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
+      <div className="space-y-2">
+        {years.map(year => (
+          <div key={`${parameterType}-${year}`} className="border rounded-lg">
+            <button
+              onClick={() => toggleYear(year)}
+              className="w-full px-4 py-2 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
+              <span className="font-medium">{year}</span>
+              <svg 
+                className={`w-5 h-5 transform transition-transform ${expandedYears.has(year) ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {expandedYears.has(year) && (
+              <div className="p-4 bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {occupations.map(occ => {
+                    const baseline = baselineParameters[year][occ];
+                    const current = parameters[year][occ];
+                    const change = ((current - baseline) / baseline * 100).toFixed(1);
+                    const inputId = `${parameterType}-${year}-${occ}`;
+
+                    return (
+                      <div key={inputId} className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700">{occ}</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            key={inputId}
+                            type="number"
+                            step={isPercentage ? "0.01" : "1"}
+                            value={current}
+                            onChange={(e) => handleInputChange(year, occ, e.target.value)}
+                            onFocus={() => setFocusedInput(inputId)}
+                            onBlur={() => setFocusedInput(null)}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <span className={`text-xs ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+ParameterGridWithBaseline.displayName = 'ParameterGridWithBaseline';
+
+const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
+  const years = Object.keys(parameters).sort();
+  const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
+
+  const toggleYear = React.useCallback((year) => {
+    setExpandedYears(prev => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(year)) {
+        newExpanded.delete(year);
+      } else {
+        newExpanded.add(year);
+      }
+      return newExpanded;
+    });
+  }, []);
+
+  const handleInputChange = React.useCallback((year, cat, value) => {
+    onUpdate(parameterType, year, cat, value);
+  }, [onUpdate, parameterType]);
+
+  const [focusedInput, setFocusedInput] = React.useState(null);
+
+  return (
+    <div>
+      <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
+      <div className="space-y-2">
+        {years.map(year => (
+          <div key={`${parameterType}-${year}`} className="border rounded-lg">
+            <button
+              onClick={() => toggleYear(year)}
+              className="w-full px-4 py-2 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
+              <span className="font-medium">{year}</span>
+              <svg 
+                className={`w-5 h-5 transform transition-transform ${expandedYears.has(year) ? 'rotate-180' : ''}`} 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {expandedYears.has(year) && (
+              <div className="p-4 bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categories.map(cat => {
+                    const baseline = baselineParameters[year][cat];
+                    const current = parameters[year][cat];
+                    const inputId = `${parameterType}-${year}-${cat}`;
+
+                    return (
+                      <div key={inputId} className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700">{cat}</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            key={inputId}
+                            type="number"
+                            step="0.001"
+                            value={current}
+                            onChange={(e) => handleInputChange(year, cat, e.target.value)}
+                            onFocus={() => setFocusedInput(inputId)}
+                            onBlur={() => setFocusedInput(null)}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Baseline: {(baseline * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+DemandParameterGrid.displayName = 'DemandParameterGrid';
+
+const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
+        <select 
+          value={activeScenario}
+          onChange={(e) => onSelectScenario(e.target.value)}
+          className="w-full border border-gray-300 rounded-md px-3 py-2"
+        >
+          <option value="baseline">Baseline</option>
+          {scenarios.map(scenario => (
+            <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-end space-x-2">
+        <button 
+          onClick={onCreateScenario}
+          className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
+        >
+          Create New Scenario
+        </button>
+        <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
+          Export Scenario
+        </button>
+      </div>
+    </div>
+
+    {scenarios.length > 0 && (
+      <div className="mt-6">
+        <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
+        <div className="space-y-2">
+          {scenarios.map(scenario => (
+            <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium">{scenario.name}</p>
+                <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => onSelectScenario(scenario.id)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Load
+                </button>
+                <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 function App() {
   const [currentView, setCurrentView] = React.useState('executive');
   const [selectedYear, setSelectedYear] = React.useState(2024);
@@ -12,7 +243,6 @@ function App() {
   const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
   const [activeParameterTab, setActiveParameterTab] = React.useState('supply');
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
-  const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState({
@@ -39,8 +269,32 @@ function App() {
     parameters: workforceData.baselineParameters
   });
 
-  // Temporary parameters for editing in Analyst View
-  const [editingParameters, setEditingParameters] = React.useState(workforceData.parameters);
+  // Use useReducer for more stable parameter updates
+  const [editingParameters, dispatch] = React.useReducer(
+    (state, action) => {
+      switch (action.type) {
+        case 'UPDATE_PARAMETER':
+          const { paramType, year, occupation, value } = action.payload;
+          return {
+            ...state,
+            [paramType]: {
+              ...state[paramType],
+              [year]: {
+                ...state[paramType][year],
+                [occupation]: parseFloat(value) || 0
+              }
+            }
+          };
+        case 'RESET_PARAMETERS':
+          return action.payload;
+        case 'LOAD_SCENARIO':
+          return action.payload;
+        default:
+          return state;
+      }
+    },
+    workforceData.parameters
+  );
 
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
@@ -199,38 +453,61 @@ function App() {
     }, {});
   }
 
+  
+
+  const resetParameters = React.useCallback(() => {
+    dispatch({ type: 'RESET_PARAMETERS', payload: workforceData.parameters });
+    setUnsavedChanges(false);
+  }, [workforceData.parameters]);
+
+  const updateParameter = React.useCallback((paramType, year, occupation, value) => {
+    dispatch({
+      type: 'UPDATE_PARAMETER',
+      payload: { paramType, year, occupation, value }
+    });
+    setUnsavedChanges(true);
+  }, []);
+
   const applyParameterChanges = React.useCallback(() => {
-    // Only update projections for the specific parameters that were changed
+    // Only update projections for changed parameters, not regenerate everything
     const newProjections = { ...workforceData.projections };
-
-    // Only recalculate for the specific changes tracked in pendingChanges
-    Object.keys(pendingChanges).forEach(changeKey => {
-      const [paramType, year, occupation] = changeKey.split('|');
-
-      if (!newProjections[year]) newProjections[year] = {};
-      if (!newProjections[year][occupation]) {
-        newProjections[year][occupation] = { ...workforceData.projections[year][occupation] };
-      }
-
-      // Recalculate only this specific occupation/year
-      let baseSupply = editingParameters.supply[year][occupation];
-      const inflows = editingParameters.educationalInflow[year][occupation] + 
-                     editingParameters.internationalMigrants[year][occupation] + 
-                     editingParameters.domesticMigrants[year][occupation] + 
-                     editingParameters.reEntrants[year][occupation];
-      const outflows = baseSupply * (editingParameters.retirementRate[year][occupation] + 
-                                   editingParameters.attritionRate[year][occupation]);
-
-      const newSupply = Math.round(baseSupply + inflows - outflows);
-      const baseDemand = baseSupply * 1.1; // 10% shortage baseline
-      const yearMultiplier = 1 + (parseInt(year) - 2024) * 0.02; // 2% annual growth
-      const newDemand = Math.round(baseDemand * yearMultiplier);
-
-      newProjections[year][occupation] = {
-        supply: newSupply,
-        demand: newDemand,
-        gap: newDemand - newSupply
-      };
+    
+    // Find what changed by comparing with baseline
+    Object.keys(editingParameters).forEach(paramType => {
+      Object.keys(editingParameters[paramType]).forEach(year => {
+        Object.keys(editingParameters[paramType][year]).forEach(occupation => {
+          const currentValue = editingParameters[paramType][year][occupation];
+          const baselineValue = workforceData.baselineParameters[paramType][year][occupation];
+          
+          // Only recalculate if this specific parameter changed
+          if (currentValue !== baselineValue) {
+            if (!newProjections[year]) newProjections[year] = {};
+            if (!newProjections[year][occupation]) {
+              newProjections[year][occupation] = { ...workforceData.projections[year][occupation] };
+            }
+            
+            // Recalculate only this specific occupation/year
+            let baseSupply = editingParameters.supply[year][occupation];
+            const inflows = editingParameters.educationalInflow[year][occupation] + 
+                           editingParameters.internationalMigrants[year][occupation] + 
+                           editingParameters.domesticMigrants[year][occupation] + 
+                           editingParameters.reEntrants[year][occupation];
+            const outflows = baseSupply * (editingParameters.retirementRate[year][occupation] + 
+                                         editingParameters.attritionRate[year][occupation]);
+            
+            const newSupply = Math.round(baseSupply + inflows - outflows);
+            const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+            const yearMultiplier = 1 + (parseInt(year) - 2024) * 0.02; // 2% annual growth
+            const newDemand = Math.round(baseDemand * yearMultiplier);
+            
+            newProjections[year][occupation] = {
+              supply: newSupply,
+              demand: newDemand,
+              gap: newDemand - newSupply
+            };
+          }
+        });
+      });
     });
 
     setWorkforceData({
@@ -239,32 +516,35 @@ function App() {
       projections: newProjections
     });
     setUnsavedChanges(false);
-    setPendingChanges({}); // Clear pending changes
+  }, [editingParameters, workforceData]);
 
-    // Note: Executive view remains unchanged
-  }, [editingParameters, workforceData.projections, pendingChanges]);
-
-  const resetParameters = () => {
-    setEditingParameters(workforceData.parameters);
-    setUnsavedChanges(false);
-    setPendingChanges({});
-  };
-
-  const updateParameter = (paramType, year, occupation, value) => {
-    const newParams = { ...editingParameters };
-    if (!newParams[paramType][year]) {
-      newParams[paramType][year] = {};
-    }
-    newParams[paramType][year][occupation] = parseFloat(value) || 0;
-    setEditingParameters(newParams);
-    setUnsavedChanges(true);
-
-    // Track the specific parameter change
-    setPendingChanges(prev => ({
-      ...prev,
-      [`${paramType}|${year}|${occupation}`]: true
-    }));
-  };
+  // Create stable references for arrays and objects
+  const stableOccupations = React.useMemo(() => workforceData.occupations, [workforceData.occupations]);
+  const stableSupplyParams = React.useMemo(() => editingParameters.supply, [editingParameters.supply]);
+  const stableBaselineSupply = React.useMemo(() => workforceData.baselineParameters.supply, [workforceData.baselineParameters.supply]);
+  const stableEducationalInflow = React.useMemo(() => editingParameters.educationalInflow, [editingParameters.educationalInflow]);
+  const stableBaselineEducationalInflow = React.useMemo(() => workforceData.baselineParameters.educationalInflow, [workforceData.baselineParameters.educationalInflow]);
+  const stableInternationalMigrants = React.useMemo(() => editingParameters.internationalMigrants, [editingParameters.internationalMigrants]);
+  const stableBaselineInternationalMigrants = React.useMemo(() => workforceData.baselineParameters.internationalMigrants, [workforceData.baselineParameters.internationalMigrants]);
+  const stableDomesticMigrants = React.useMemo(() => editingParameters.domesticMigrants, [editingParameters.domesticMigrants]);
+  const stableBaselineDomesticMigrants = React.useMemo(() => workforceData.baselineParameters.domesticMigrants, [workforceData.baselineParameters.domesticMigrants]);
+  const stableReEntrants = React.useMemo(() => editingParameters.reEntrants, [editingParameters.reEntrants]);
+  const stableBaselineReEntrants = React.useMemo(() => workforceData.baselineParameters.reEntrants, [workforceData.baselineParameters.reEntrants]);
+  const stableRetirementRate = React.useMemo(() => editingParameters.retirementRate, [editingParameters.retirementRate]);
+  const stableBaselineRetirementRate = React.useMemo(() => workforceData.baselineParameters.retirementRate, [workforceData.baselineParameters.retirementRate]);
+  const stableAttritionRate = React.useMemo(() => editingParameters.attritionRate, [editingParameters.attritionRate]);
+  const stableBaselineAttritionRate = React.useMemo(() => workforceData.baselineParameters.attritionRate, [workforceData.baselineParameters.attritionRate]);
+  const stablePopulationGrowth = React.useMemo(() => editingParameters.populationGrowth, [editingParameters.populationGrowth]);
+  const stableBaselinePopulationGrowth = React.useMemo(() => workforceData.baselineParameters.populationGrowth, [workforceData.baselineParameters.populationGrowth]);
+  const stableHealthStatusChange = React.useMemo(() => editingParameters.healthStatusChange, [editingParameters.healthStatusChange]);
+  const stableBaselineHealthStatusChange = React.useMemo(() => workforceData.baselineParameters.healthStatusChange, [workforceData.baselineParameters.healthStatusChange]);
+  const stableServiceUtilization = React.useMemo(() => editingParameters.serviceUtilization, [editingParameters.serviceUtilization]);
+  const stableBaselineServiceUtilization = React.useMemo(() => workforceData.baselineParameters.serviceUtilization, [workforceData.baselineParameters.serviceUtilization]);
+  
+  // Stable category arrays
+  const stableAgeGroups = React.useMemo(() => ['0-18', '19-64', '65-84', '85+'], []);
+  const stableHealthStatusCategories = React.useMemo(() => ['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy'], []);
+  const stableServiceCategories = React.useMemo(() => ['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services'], []);
 
   const createNewScenario = (scenarioData) => {
     const newScenario = {
@@ -460,10 +740,10 @@ function App() {
             <ParameterGridWithBaseline 
               title="Current Supply (FTE)"
               parameterType="supply"
-              parameters={editingParameters.supply}
-              baselineParameters={workforceData.baselineParameters.supply}
+              parameters={stableSupplyParams}
+              baselineParameters={stableBaselineSupply}
               onUpdate={updateParameter}
-              occupations={workforceData.occupations}
+              occupations={stableOccupations}
             />
           )}
 
@@ -472,34 +752,34 @@ function App() {
               <ParameterGridWithBaseline 
                 title="Educational Inflow (Annual Graduates)"
                 parameterType="educationalInflow"
-                parameters={editingParameters.educationalInflow}
-                baselineParameters={workforceData.baselineParameters.educationalInflow}
+                parameters={stableEducationalInflow}
+                baselineParameters={stableBaselineEducationalInflow}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
               <ParameterGridWithBaseline 
                 title="International Migrants (Annual)"
                 parameterType="internationalMigrants"
-                parameters={editingParameters.internationalMigrants}
-                baselineParameters={workforceData.baselineParameters.internationalMigrants}
+                parameters={stableInternationalMigrants}
+                baselineParameters={stableBaselineInternationalMigrants}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
               <ParameterGridWithBaseline 
                 title="Domestic Migrants (Annual)"
                 parameterType="domesticMigrants"
-                parameters={editingParameters.domesticMigrants}
-                baselineParameters={workforceData.baselineParameters.domesticMigrants}
+                parameters={stableDomesticMigrants}
+                baselineParameters={stableBaselineDomesticMigrants}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
               <ParameterGridWithBaseline 
                 title="Re-Entrants (Annual)"
                 parameterType="reEntrants"
-                parameters={editingParameters.reEntrants}
-                baselineParameters={workforceData.baselineParameters.reEntrants}
+                parameters={stableReEntrants}
+                baselineParameters={stableBaselineReEntrants}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
               />
             </div>
           )}
@@ -509,19 +789,19 @@ function App() {
               <ParameterGridWithBaseline 
                 title="Retirement Rate (%)"
                 parameterType="retirementRate"
-                parameters={editingParameters.retirementRate}
-                baselineParameters={workforceData.baselineParameters.retirementRate}
+                parameters={stableRetirementRate}
+                baselineParameters={stableBaselineRetirementRate}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
                 isPercentage={true}
               />
               <ParameterGridWithBaseline 
                 title="Attrition Rate (%)"
                 parameterType="attritionRate"
-                parameters={editingParameters.attritionRate}
-                baselineParameters={workforceData.baselineParameters.attritionRate}
+                parameters={stableAttritionRate}
+                baselineParameters={stableBaselineAttritionRate}
                 onUpdate={updateParameter}
-                occupations={workforceData.occupations}
+                occupations={stableOccupations}
                 isPercentage={true}
               />
             </div>
@@ -532,26 +812,26 @@ function App() {
               <DemandParameterGrid 
                 title="Population Growth Rate (% per year)"
                 parameterType="populationGrowth"
-                parameters={editingParameters.populationGrowth}
-                baselineParameters={workforceData.baselineParameters.populationGrowth}
+                parameters={stablePopulationGrowth}
+                baselineParameters={stableBaselinePopulationGrowth}
                 onUpdate={updateParameter}
-                categories={['0-18', '19-64', '65-84', '85+']}
+                categories={stableAgeGroups}
               />
               <DemandParameterGrid 
                 title="Health Status Change (% per year)"
                 parameterType="healthStatusChange"
-                parameters={editingParameters.healthStatusChange}
-                baselineParameters={workforceData.baselineParameters.healthStatusChange}
+                parameters={stableHealthStatusChange}
+                baselineParameters={stableBaselineHealthStatusChange}
                 onUpdate={updateParameter}
-                categories={['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']}
+                categories={stableHealthStatusCategories}
               />
               <DemandParameterGrid 
                 title="Service Utilization Change (% per year)"
                 parameterType="serviceUtilization"
-                parameters={editingParameters.serviceUtilization}
-                baselineParameters={workforceData.baselineParameters.serviceUtilization}
+                parameters={stableServiceUtilization}
+                baselineParameters={stableBaselineServiceUtilization}
                 onUpdate={updateParameter}
-                categories={['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services']}
+                categories={stableServiceCategories}
               />
             </div>
           )}
@@ -564,7 +844,7 @@ function App() {
               onSelectScenario={(scenarioId) => {
                 const scenario = scenarios.find(s => s.id === scenarioId);
                 if (scenario) {
-                  setEditingParameters(scenario.parameters);
+                  dispatch({ type: 'LOAD_SCENARIO', payload: scenario.parameters });
                   setActiveScenario(scenarioId);
                 }
               }}
@@ -603,207 +883,9 @@ function App() {
     </div>
   );
 
-  const ParameterGridWithBaseline = ({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
-    const years = Object.keys(parameters).sort();
-    const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
 
-    const toggleYear = (year) => {
-      const newExpanded = new Set(expandedYears);
-      if (newExpanded.has(year)) {
-        newExpanded.delete(year);
-      } else {
-        newExpanded.add(year);
-      }
-      setExpandedYears(newExpanded);
-    };
 
-    return (
-      <div>
-        <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
-        <div className="space-y-2">
-          {years.map(year => (
-            <div key={year} className="border rounded-lg">
-              <button
-                onClick={() => toggleYear(year)}
-                className="w-full px-4 py-2 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <span className="font-medium">{year}</span>
-                <svg 
-                  className={`w-5 h-5 transform transition-transform ${expandedYears.has(year) ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
 
-              {expandedYears.has(year) && (
-                <div className="p-4 bg-white">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {occupations.map(occ => {
-                      const baseline = baselineParameters[year][occ];
-                      const current = parameters[year][occ];
-                      const change = ((current - baseline) / baseline * 100).toFixed(1);
-
-                      return (
-                        <div key={occ} className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">{occ}</label>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              step={isPercentage ? "0.01" : "1"}
-                              value={current}
-                              onChange={(e) => onUpdate(parameterType, year, occ, e.target.value)}
-                              className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className={`text-xs ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const DemandParameterGrid = ({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
-    const years = Object.keys(parameters).sort();
-    const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
-
-    const toggleYear = (year) => {
-      const newExpanded = new Set(expandedYears);
-      if (newExpanded.has(year)) {
-        newExpanded.delete(year);
-      } else {
-        newExpanded.add(year);
-      }
-      setExpandedYears(newExpanded);
-    };
-
-    return (
-      <div>
-        <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
-        <div className="space-y-2">
-          {years.map(year => (
-            <div key={year} className="border rounded-lg">
-              <button
-                onClick={() => toggleYear(year)}
-                className="w-full px-4 py-2 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <span className="font-medium">{year}</span>
-                <svg 
-                  className={`w-5 h-5 transform transition-transform ${expandedYears.has(year) ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {expandedYears.has(year) && (
-                <div className="p-4 bg-white">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {categories.map(cat => {
-                      const baseline = baselineParameters[year][cat];
-                      const current = parameters[year][cat];
-
-                      return (
-                        <div key={cat} className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">{cat}</label>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              step="0.001"
-                              value={current}
-                              onChange={(e) => updateParameter(parameterType, year, cat, e.target.value)}
-                              className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Baseline: {(baseline * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
-          <select 
-            value={activeScenario}
-            onChange={(e) => onSelectScenario(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="baseline">Baseline</option>
-            {scenarios.map(scenario => (
-              <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-end space-x-2">
-          <button 
-            onClick={onCreateScenario}
-            className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-          >
-            Create New Scenario
-          </button>
-          <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
-            Export Scenario
-          </button>
-        </div>
-      </div>
-
-      {scenarios.length > 0 && (
-        <div className="mt-6">
-          <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
-          <div className="space-y-2">
-            {scenarios.map(scenario => (
-              <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{scenario.name}</p>
-                  <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => onSelectScenario(scenario.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    Load
-                  </button>
-                  <button className="text-red-600 hover:text-red-800 text-sm font-medium">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   const ParameterImpactChart = ({ parameters }) => {
     // Calculate impact of parameter changes
