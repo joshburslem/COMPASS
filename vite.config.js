@@ -10,6 +10,7 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       port: 443
-    }
+    },
+    allowedHosts: ['localhost', '.replit.dev']
   }
 })
