@@ -16,35 +16,32 @@ function App() {
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
 
   // Enhanced data structure with all editable parameters
-  const [workforceData, setWorkforceData] = React.useState(() => {
-    const baselineParams = generateInitialParameters();
-    return {
-      occupations: ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'],
-      populationSegments: {
-        ageGroups: ['0-18', '19-64', '65-84', '85+'],
-        genders: ['Male', 'Female'],
-        healthStatus: ['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']
-      },
-      baselineParameters: baselineParams, // Immutable baseline - never modify this
-      scenarios: {
-        baseline: {
-          name: 'Baseline',
-          parameters: JSON.parse(JSON.stringify(baselineParams)) // Deep copy for safety
-        }
+  const [workforceData, setWorkforceData] = React.useState({
+    occupations: ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'],
+    populationSegments: {
+      ageGroups: ['0-18', '19-64', '65-84', '85+'],
+      genders: ['Male', 'Female'],
+      healthStatus: ['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']
+    },
+    projections: generateSampleProjections(),
+    parameters: generateInitialParameters(),
+    baselineParameters: generateInitialParameters(), // Store baseline for comparison
+    scenarios: {
+      baseline: {
+        name: 'Baseline',
+        parameters: generateInitialParameters()
       }
-    };
+    }
   });
 
-  // Executive View data - always uses baseline parameters (immutable)
-  const [executiveData, setExecutiveData] = React.useState(() => ({
+  // Separate parameters for Executive View (read-only baseline)
+  const [executiveData, setExecutiveData] = React.useState({
     projections: generateSampleProjections(workforceData.baselineParameters),
     parameters: workforceData.baselineParameters
-  }));
+  });
 
-  // Temporary parameters for editing in Analyst View - initialize with baseline copy
-  const [editingParameters, setEditingParameters] = React.useState(() => 
-    JSON.parse(JSON.stringify(workforceData.baselineParameters))
-  );
+  // Temporary parameters for editing in Analyst View - initialize with baseline
+  const [editingParameters, setEditingParameters] = React.useState(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
 
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
@@ -170,8 +167,6 @@ function App() {
 
     return years.reduce((acc, year) => {
       acc[year] = {};
-      const yearOffset = year - 2024;
-      
       occupations.forEach(occ => {
         let baseSupply = parameters ? parameters.supply[year][occ] : {
           'Physicians': 2500,
@@ -189,66 +184,14 @@ function App() {
                          parameters.reEntrants[year][occ];
           const outflows = baseSupply * (parameters.retirementRate[year][occ] + parameters.attritionRate[year][occ]);
           baseSupply = baseSupply + inflows - outflows;
-        } else {
-          // Create more realistic baseline projections with non-linear trends
-          
-          // Supply growth factors (different for each occupation)
-          const supplyGrowthRates = {
-            'Physicians': 0.015, // 1.5% annual growth - slower due to training constraints
-            'Nurse Practitioners': 0.025, // 2.5% - expanding scope of practice
-            'Registered Nurses': 0.018, // 1.8% - moderate growth
-            'Licensed Practical Nurses': 0.012, // 1.2% - slower growth
-            'Medical Office Assistants': 0.022 // 2.2% - technology-driven demand
-          };
-          
-          // Demand growth factors (accelerating over time due to aging population)
-          const baseDemandGrowth = 0.025; // 2.5% base demand growth
-          const agingAcceleration = Math.pow(1 + yearOffset * 0.003, 2); // Accelerating demand due to aging
-          const demandMultiplier = Math.pow(1 + baseDemandGrowth * agingAcceleration, yearOffset);
-          
-          // Supply constraints (diminishing returns, retirement acceleration)
-          const retirementAcceleration = 1 + yearOffset * 0.002; // Increasing retirements
-          const supplyMultiplier = Math.pow(1 + supplyGrowthRates[occ] / retirementAcceleration, yearOffset);
-          
-          baseSupply = Math.round(baseSupply * supplyMultiplier);
         }
 
-        // Calculate demand based on realistic factors
-        let demand;
-        if (parameters) {
-          const baseDemand = baseSupply * 1.1; // 10% shortage baseline
-          const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
-          demand = Math.round(baseDemand * yearMultiplier);
-        } else {
-          // Baseline demand calculation with non-linear growth
-          const initialDemand = {
-            'Physicians': 2750, // Initial 10% shortage
-            'Nurse Practitioners': 920,
-            'Registered Nurses': 4830,
-            'Licensed Practical Nurses': 2070,
-            'Medical Office Assistants': 3680
-          }[occ];
-          
-          // Demand grows faster than supply due to aging population and chronic disease prevalence
-          const demandGrowthRate = {
-            'Physicians': 0.032, // 3.2% - high demand growth
-            'Nurse Practitioners': 0.038, // 3.8% - highest growth due to care model changes
-            'Registered Nurses': 0.035, // 3.5% - high demand
-            'Licensed Practical Nurses': 0.028, // 2.8% - moderate growth
-            'Medical Office Assistants': 0.030 // 3.0% - administrative complexity growth
-          }[occ];
-          
-          // Non-linear demand acceleration
-          const populationAging = 1 + yearOffset * 0.004; // Population aging factor
-          const chronicDiseaseIncrease = 1 + yearOffset * 0.003; // Chronic disease prevalence
-          const acceleratedGrowth = Math.pow(1 + demandGrowthRate * populationAging * chronicDiseaseIncrease, yearOffset);
-          
-          demand = Math.round(initialDemand * acceleratedGrowth);
-        }
+        const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+        const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
 
         acc[year][occ] = {
-          supply: baseSupply,
-          demand: demand,
+          supply: Math.round(parameters ? baseSupply : baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)),
+          demand: Math.round(baseDemand * yearMultiplier),
           gap: 0
         };
         acc[year][occ].gap = acc[year][occ].demand - acc[year][occ].supply;
@@ -261,30 +204,42 @@ function App() {
     // Generate new projections based on current editing parameters
     const newProjections = generateSampleProjections(editingParameters);
 
-    // Only update existing scenarios - never create new ones automatically
-    if (activeScenario !== 'baseline') {
+    // If we're editing baseline, force creation of a new scenario
+    if (activeScenario === 'baseline') {
+      const newScenario = {
+        id: Date.now().toString(),
+        name: `Modified Baseline ${new Date().toLocaleTimeString()}`,
+        description: 'Modified from baseline parameters',
+        parameters: JSON.parse(JSON.stringify(editingParameters)),
+        projections: newProjections,
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedScenarios = [...scenarios, newScenario];
+      setScenarios(updatedScenarios);
+      setActiveScenario(newScenario.id);
+    } else {
+      // Update existing scenario
       const updatedScenarios = scenarios.map(scenario => 
         scenario.id === activeScenario 
           ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
           : scenario
       );
       setScenarios(updatedScenarios);
-      
-      setUnsavedChanges(false);
-      setPendingChanges({});
-      
-      console.log('Applied changes to scenario:', activeScenario);
     }
+    
+    setUnsavedChanges(false);
+    setPendingChanges({});
+    
+    console.log('Applied changes to scenario:', activeScenario);
   }, [editingParameters, activeScenario, scenarios, pendingChanges]);
 
   const resetParameters = () => {
     if (activeScenario === 'baseline') {
-      // Always use the immutable baseline parameters
       setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       if (scenario) {
-        // Use the scenario's saved parameters
         setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
       }
     }
@@ -293,7 +248,6 @@ function App() {
   };
 
   const resetToBaseline = () => {
-    // Always use the immutable baseline parameters
     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     setActiveScenario('baseline');
     setUnsavedChanges(false);
@@ -301,8 +255,7 @@ function App() {
   };
 
   const updateParameter = (paramType, year, occupation, value) => {
-    // Create a completely new parameter object to avoid any reference issues
-    const newParams = JSON.parse(JSON.stringify(editingParameters));
+    const newParams = { ...editingParameters };
     if (!newParams[paramType][year]) {
       newParams[paramType][year] = {};
     }
@@ -344,15 +297,8 @@ function App() {
   };
 
   const getCurrentScenarioProjections = () => {
-    if (currentView === 'executive') {
-      // Executive View ALWAYS shows baseline projections - never affected by analyst changes
-      return executiveData.projections;
-    }
-    
-    // Analyst View shows current scenario projections
     if (activeScenario === 'baseline') {
-      // Generate projections from current editing parameters (may differ from baseline if unsaved changes)
-      return generateSampleProjections(editingParameters);
+      return executiveData.projections; // Always baseline projections
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
       return scenario?.projections || generateSampleProjections(editingParameters);
@@ -449,7 +395,7 @@ function App() {
 
         {/* Dynamic Line Chart */}
         <div className="bg-gray-50 rounded-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">Projected Workforce Gap Trends (2024-2034) - Baseline</h3>
+          <h3 className="text-xl font-semibold mb-4">Projected Workforce Gap Trends (2024-2034)</h3>
           <WorkforceGapTrendChart 
             data={executiveData.projections} 
             selectedOccupations={getFilteredOccupations()}
@@ -501,18 +447,12 @@ function App() {
             {unsavedChanges && (
               <>
                 <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
-                {activeScenario === 'baseline' ? (
-                  <span className="text-sm text-gray-600 italic">
-                    Go to Scenario Management tab to save as new scenario
-                  </span>
-                ) : (
-                  <button 
-                    onClick={applyParameterChanges}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-                  >
-                    Apply Changes
-                  </button>
-                )}
+                <button 
+                  onClick={applyParameterChanges}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                >
+                  {activeScenario === 'baseline' ? 'Save as New Scenario' : 'Apply Changes'}
+                </button>
                 <button 
                   onClick={resetParameters}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
@@ -690,22 +630,18 @@ function App() {
                 
                 if (scenarioId === 'baseline') {
                   console.log('Loading baseline parameters');
-                  // Always use the immutable baseline parameters - create a fresh copy
                   setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
-                  setPendingChanges({});
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
                   
                   if (scenario) {
                     console.log('Loading scenario parameters:', scenario.parameters);
-                    // Create a fresh copy of scenario parameters
                     setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
-                    setPendingChanges({});
                   } else {
                     console.error('Scenario not found:', scenarioId);
                   }
@@ -852,22 +788,13 @@ function App() {
             onClick={onCreateScenario}
             className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
           >
-            {activeScenario === 'baseline' && unsavedChanges ? 'Save Current Changes as New Scenario' : 'Create New Scenario'}
+            Create New Scenario
           </button>
           <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
             Export Scenario
           </button>
         </div>
       </div>
-      
-      {activeScenario === 'baseline' && unsavedChanges && (
-        <div className="p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> You have unsaved changes to the baseline parameters. 
-            Click "Save Current Changes as New Scenario" above to create a new scenario with your current parameter adjustments.
-          </p>
-        </div>
-      )}
 
       {scenarios.length > 0 && (
         <div className="mt-6">
@@ -1267,13 +1194,6 @@ function App() {
       setScenarioDescription('');
     };
 
-    const handleKeyPress = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey && scenarioName.trim()) {
-        e.preventDefault();
-        handleCreate();
-      }
-    };
-
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-96">
@@ -1285,39 +1205,34 @@ function App() {
                 type="text" 
                 value={scenarioName}
                 onChange={(e) => setScenarioName(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-full border border-gray-300 rounded-md px-3 py-2" 
                 placeholder="e.g., Increased Training Seats" 
                 autoFocus
-                maxLength={50}
               />
-              <p className="text-xs text-gray-500 mt-1">{scenarioName.length}/50 characters</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea 
                 value={scenarioDescription}
                 onChange={(e) => setScenarioDescription(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-full border border-gray-300 rounded-md px-3 py-2" 
                 rows="3" 
                 placeholder="Describe the scenario changes..."
-                maxLength={200}
               ></textarea>
-              <p className="text-xs text-gray-500 mt-1">{scenarioDescription.length}/200 characters</p>
             </div>
             <div className="flex space-x-2">
               <button 
                 onClick={handleCancel}
-                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleCreate}
                 disabled={!scenarioName.trim()}
-                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Create Scenario
+                Create
               </button>
             </div>
           </div>
