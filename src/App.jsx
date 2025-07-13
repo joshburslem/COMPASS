@@ -207,35 +207,24 @@ function App() {
     // Generate new projections based on current editing parameters
     const newProjections = generateSampleProjections(editingParameters);
 
-    // If we're editing baseline, force creation of a new scenario
-    if (activeScenario === 'baseline') {
-      const newScenario = {
-        id: Date.now().toString(),
-        name: `Modified Baseline ${new Date().toLocaleTimeString()}`,
-        description: 'Modified from baseline parameters',
-        parameters: JSON.parse(JSON.stringify(editingParameters)),
-        projections: newProjections,
-        createdAt: new Date().toISOString()
-      };
-      
-      const updatedScenarios = [...scenarios, newScenario];
-      setScenarios(updatedScenarios);
-      setActiveScenario(newScenario.id);
-    } else {
-      // Update existing scenario
+    // Only update existing scenarios - never modify baseline or create new ones automatically
+    if (activeScenario !== 'baseline') {
       const updatedScenarios = scenarios.map(scenario => 
         scenario.id === activeScenario 
           ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
           : scenario
       );
       setScenarios(updatedScenarios);
+      
+      setUnsavedChanges(false);
+      setPendingChanges({});
+      
+      console.log('Applied changes to scenario:', activeScenario);
+    } else {
+      // For baseline, we don't apply changes - user must create a new scenario
+      console.log('Cannot apply changes to baseline - use scenario management to save as new scenario');
     }
-    
-    setUnsavedChanges(false);
-    setPendingChanges({});
-    
-    console.log('Applied changes to scenario:', activeScenario);
-  }, [editingParameters, activeScenario, scenarios, pendingChanges]);
+  }, [editingParameters, activeScenario, scenarios]);
 
   const resetParameters = () => {
     if (activeScenario === 'baseline') {
@@ -309,9 +298,9 @@ function App() {
       return executiveData.projections;
     }
     
-    // Analyst View shows saved scenario projections only (not live editing parameters)
+    // Analyst View shows SAVED scenario projections only - not live editing parameters
     if (activeScenario === 'baseline') {
-      // Show baseline projections until changes are applied
+      // Always show baseline projections until changes are applied
       return executiveData.projections;
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
@@ -461,12 +450,18 @@ function App() {
             {unsavedChanges && (
               <>
                 <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
-                <button 
-                  onClick={applyParameterChanges}
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
-                >
-                  {activeScenario === 'baseline' ? 'Save as New Scenario' : 'Apply Changes'}
-                </button>
+                {activeScenario === 'baseline' ? (
+                  <span className="text-sm text-gray-600 italic">
+                    Go to Scenario Management tab to save as new scenario
+                  </span>
+                ) : (
+                  <button 
+                    onClick={applyParameterChanges}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
+                  >
+                    Apply Changes
+                  </button>
+                )}
                 <button 
                   onClick={resetParameters}
                   className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 text-sm"
@@ -653,15 +648,20 @@ function App() {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
                   
-                  if (scenario) {
+                  if (scenario && scenario.parameters) {
                     console.log('Loading scenario parameters:', scenario.parameters);
-                    // Create a fresh copy of scenario parameters
+                    // Create a fresh copy of scenario parameters to avoid reference issues
                     setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
                     setPendingChanges({});
                   } else {
-                    console.error('Scenario not found:', scenarioId);
+                    console.error('Scenario not found or missing parameters:', scenarioId);
+                    // Fallback to baseline if scenario is corrupted
+                    setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                    setActiveScenario('baseline');
+                    setUnsavedChanges(false);
+                    setPendingChanges({});
                   }
                 }
               }}
@@ -810,13 +810,22 @@ function App() {
             onClick={onCreateScenario}
             className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
           >
-            Create New Scenario
+            {activeScenario === 'baseline' && unsavedChanges ? 'Save Current Changes as New Scenario' : 'Create New Scenario'}
           </button>
           <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
             Export Scenario
           </button>
         </div>
       </div>
+      
+      {activeScenario === 'baseline' && unsavedChanges && (
+        <div className="p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Note:</strong> You have unsaved changes to the baseline parameters. 
+            Click "Save Current Changes as New Scenario" above to create a new scenario with your current parameter adjustments.
+          </p>
+        </div>
+      )}
 
       {scenarios.length > 0 && (
         <div className="mt-6">
