@@ -842,7 +842,7 @@ function App() {
                 <span className="text-sm font-medium text-gray-700">Compare with Baseline</span>
               </label>
             </div>
-            
+
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-3">Select Occupations to View</h4>
               <div className="flex flex-wrap gap-2">
@@ -1241,7 +1241,7 @@ function App() {
       const totalDemand = selectedOccupations.reduce((sum, occ) => sum + (data[year][occ]?.demand || 0), 0);
       yearData.supply = totalSupply;
       yearData.demand = totalDemand;
-      
+
       if (showBaseline && baselineData) {
         const baselineSupply = selectedOccupations.reduce((sum, occ) => sum + (baselineData[year]?.[occ]?.supply || 0), 0);
         const baselineDemand = selectedOccupations.reduce((sum, occ) => sum + (baselineData[year]?.[occ]?.demand || 0), 0);
@@ -1668,80 +1668,3 @@ function App() {
       </div>
     );
   };
-
-  return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gray-100">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Nova Scotia Primary Care Workforce Planning</h1>
-              <p className="text-sm text-gray-600">Multi-Professional Needs-Based Analytics Dashboard</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <select 
-                value={selectedYear} 
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-md px-3 py-2"
-              >
-                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-              <button 
-                onClick={() => setShowDataImport(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-              >
-                Import Data
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <nav className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setCurrentView('executive')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                currentView === 'executive' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Executive View
-            </button>
-            <button
-              onClick={() => setCurrentView('analyst')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                currentView === 'analyst' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Analyst View
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ErrorBoundary>
-          {currentView === 'executive' ? <ExecutiveView /> : <AnalystView />}
-        </ErrorBoundary>
-      </main>
-
-      {/* Modals */}
-      {showDataImport && <DataImportModal />}
-      {showScenarioModal && <ScenarioModal />}
-      </div>
-    </ErrorBoundary>
-  );
-}
-
-export default App;
