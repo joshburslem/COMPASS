@@ -36,12 +36,12 @@ function App() {
 
   // Separate parameters for Executive View (read-only baseline)
   const [executiveData, setExecutiveData] = React.useState({
-    projections: generateSampleProjections(workforceData.baselineParameters),
+    projections: workforceData.projections,
     parameters: workforceData.baselineParameters
   });
 
-  // Temporary parameters for editing in Analyst View - initialize with baseline
-  const [editingParameters, setEditingParameters] = React.useState(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+  // Temporary parameters for editing in Analyst View
+  const [editingParameters, setEditingParameters] = React.useState(workforceData.parameters);
 
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
@@ -201,56 +201,59 @@ function App() {
   }
 
   const applyParameterChanges = React.useCallback(() => {
-    // Generate new projections based on current editing parameters
-    const newProjections = generateSampleProjections(editingParameters);
+    // Only update projections for the specific parameters that were changed
+    const newProjections = { ...workforceData.projections };
 
-    // If we're editing baseline, force creation of a new scenario
-    if (activeScenario === 'baseline') {
-      const newScenario = {
-        id: Date.now().toString(),
-        name: `Modified Baseline ${new Date().toLocaleTimeString()}`,
-        description: 'Modified from baseline parameters',
-        parameters: JSON.parse(JSON.stringify(editingParameters)),
-        projections: newProjections,
-        createdAt: new Date().toISOString()
+    // Only recalculate for the specific changes tracked in pendingChanges
+    Object.keys(pendingChanges).forEach(changeKey => {
+      const [paramType, year, occupation] = changeKey.split('|');
+
+      if (!newProjections[year]) newProjections[year] = {};
+      if (!newProjections[year][occupation]) {
+        newProjections[year][occupation] = { ...workforceData.projections[year][occupation] };
+      }
+
+      // Recalculate only this specific occupation/year
+      let baseSupply = editingParameters.supply[year][occupation];
+      const inflows = editingParameters.educationalInflow[year][occupation] + 
+                     editingParameters.internationalMigrants[year][occupation] + 
+                     editingParameters.domesticMigrants[year][occupation] + 
+                     editingParameters.reEntrants[year][occupation];
+      const outflows = baseSupply * (editingParameters.retirementRate[year][occupation] + 
+                                   editingParameters.attritionRate[year][occupation]);
+
+      const newSupply = Math.round(baseSupply + inflows - outflows);
+      const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+      const yearMultiplier = 1 + (parseInt(year) - 2024) * 0.02; // 2% annual growth
+      const newDemand = Math.round(baseDemand * yearMultiplier);
+
+      newProjections[year][occupation] = {
+        supply: newSupply,
+        demand: newDemand,
+        gap: newDemand - newSupply
       };
-      
-      const updatedScenarios = [...scenarios, newScenario];
-      setScenarios(updatedScenarios);
-      setActiveScenario(newScenario.id);
-    } else {
-      // Update existing scenario
-      const updatedScenarios = scenarios.map(scenario => 
-        scenario.id === activeScenario 
-          ? { ...scenario, parameters: JSON.parse(JSON.stringify(editingParameters)), projections: newProjections }
-          : scenario
-      );
-      setScenarios(updatedScenarios);
-    }
-    
+    });
+
+    setWorkforceData({
+      ...workforceData,
+      parameters: editingParameters,
+      projections: newProjections
+    });
     setUnsavedChanges(false);
-    setPendingChanges({});
-    
-    console.log('Applied changes to scenario:', activeScenario);
-  }, [editingParameters, activeScenario, scenarios, pendingChanges]);
+    setPendingChanges({}); // Clear pending changes
+
+    // Note: Executive view remains unchanged
+  }, [editingParameters, workforceData.projections, pendingChanges]);
 
   const resetParameters = () => {
-    if (activeScenario === 'baseline') {
-      setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-    } else {
-      const scenario = scenarios.find(s => s.id === activeScenario);
-      if (scenario) {
-        setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
-      }
-    }
+    setEditingParameters(workforceData.parameters);
     setUnsavedChanges(false);
     setPendingChanges({});
   };
 
   const resetToBaseline = () => {
-    setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-    setActiveScenario('baseline');
-    setUnsavedChanges(false);
+    setEditingParameters(workforceData.baselineParameters);
+    setUnsavedChanges(true);
     setPendingChanges({});
   };
 
@@ -274,14 +277,11 @@ function App() {
     console.log('Creating scenario with data:', scenarioData);
     console.log('Current editing parameters:', editingParameters);
     
-    const scenarioProjections = generateSampleProjections(editingParameters);
-    
     const newScenario = {
       id: Date.now().toString(),
       name: scenarioData.name,
       description: scenarioData.description,
       parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
-      projections: scenarioProjections,
       createdAt: new Date().toISOString()
     };
     
@@ -294,15 +294,6 @@ function App() {
     setUnsavedChanges(false);
     
     console.log('Updated scenarios list:', updatedScenarios);
-  };
-
-  const getCurrentScenarioProjections = () => {
-    if (activeScenario === 'baseline') {
-      return executiveData.projections; // Always baseline projections
-    } else {
-      const scenario = scenarios.find(s => s.id === activeScenario);
-      return scenario?.projections || generateSampleProjections(editingParameters);
-    }
   };
 
   const toggleOccupation = (occupation) => {
@@ -437,12 +428,7 @@ function App() {
       {/* Main Dashboard */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">Analyst Dashboard</h2>
-            <p className="text-sm text-gray-600">
-              Current: {activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Unknown Scenario'}
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold text-gray-800">Analyst Dashboard</h2>
           <div className="flex items-center space-x-3">
             {unsavedChanges && (
               <>
@@ -451,7 +437,7 @@ function App() {
                   onClick={applyParameterChanges}
                   className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm"
                 >
-                  {activeScenario === 'baseline' ? 'Save as New Scenario' : 'Apply Changes'}
+                  Apply Changes
                 </button>
                 <button 
                   onClick={resetParameters}
@@ -465,7 +451,7 @@ function App() {
               onClick={resetToBaseline}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm"
             >
-              Load Baseline
+              Reset to Baseline
             </button>
           </div>
         </div>
@@ -655,21 +641,16 @@ function App() {
       {/* Visualizations */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-semibold mb-4">
-            Projected Workforce Gap Trends 
-            <span className="text-sm font-normal text-gray-600 ml-2">
-              ({activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
-            </span>
-          </h3>
+          <h3 className="text-xl font-semibold mb-4">Projected Workforce Gap Trends</h3>
           <WorkforceGapTrendChart 
-            data={getCurrentScenarioProjections()} 
+            data={workforceData.projections} 
             selectedOccupations={workforceData.occupations}
           />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Supply vs Demand Analysis</h3>
-          <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
+          <DetailedSupplyDemandChart data={workforceData.projections} />
         </div>
       </div>
 
