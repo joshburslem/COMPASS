@@ -782,15 +782,53 @@ function App() {
         </div>
       </div>
 
+      {/* Preview Banner */}
+      {previewProjections && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-blue-800">
+                Preview Mode: Visualizations show your adjusted parameters
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs text-blue-600">
+                {Object.keys(pendingChanges).length} parameter(s) changed
+              </span>
+              <button 
+                onClick={applyParameterChanges}
+                className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm"
+              >
+                Apply to {activeScenario === 'baseline' ? 'Create Scenario' : 'Update Scenario'}
+              </button>
+              <button 
+                onClick={resetParameters}
+                className="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Visualizations */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-semibold mb-4">
-            Projected Workforce Gap Trends 
-            <span className="text-sm font-normal text-gray-600 ml-2">
-              ({activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
-            </span>
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">
+              Projected Workforce Gap Trends 
+              <span className="text-sm font-normal text-gray-600 ml-2">
+                ({activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
+              </span>
+            </h3>
+            {previewProjections && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                PREVIEW
+              </span>
+            )}
+          </div>
           <WorkforceGapTrendChart 
             data={getCurrentScenarioProjections()} 
             selectedOccupations={workforceData.occupations}
@@ -798,7 +836,14 @@ function App() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-semibold mb-4">Supply vs Demand Analysis</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">Supply vs Demand Analysis</h3>
+            {previewProjections && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                PREVIEW
+              </span>
+            )}
+          </div>
           <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
         </div>
       </div>
