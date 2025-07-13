@@ -250,6 +250,7 @@ function App() {
     }
     setUnsavedChanges(false);
     setPendingChanges({});
+    setTempInputValues({}); // Clear any temporary input values
   };
 
   const resetToBaseline = () => {
@@ -258,10 +259,23 @@ function App() {
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
+    setTempInputValues({}); // Clear any temporary input values
   };
 
+  // Store temporary input values without triggering state updates
+  const [tempInputValues, setTempInputValues] = React.useState({});
+
   const updateParameter = (paramType, year, occupation, value) => {
-    // Create a completely new parameter object to avoid any reference issues
+    // Store the temporary value for display purposes
+    const key = `${paramType}|${year}|${occupation}`;
+    setTempInputValues(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const commitParameterChange = (paramType, year, occupation, value) => {
+    // Only update the actual parameters when committing the change
     const newParams = JSON.parse(JSON.stringify(editingParameters));
     if (!newParams[paramType][year]) {
       newParams[paramType][year] = {};
@@ -275,6 +289,22 @@ function App() {
       ...prev,
       [`${paramType}|${year}|${occupation}`]: true
     }));
+
+    // Clear the temporary value
+    const key = `${paramType}|${year}|${occupation}`;
+    setTempInputValues(prev => {
+      const newTemp = { ...prev };
+      delete newTemp[key];
+      return newTemp;
+    });
+  };
+
+  const getParameterValue = (paramType, year, occupation) => {
+    const key = `${paramType}|${year}|${occupation}`;
+    // Return temporary value if it exists, otherwise return the actual parameter value
+    return tempInputValues[key] !== undefined 
+      ? tempInputValues[key] 
+      : editingParameters[paramType][year][occupation];
   };
 
   const createNewScenario = (scenarioData) => {
@@ -717,8 +747,9 @@ function App() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {occupations.map(occ => {
               const baseline = baselineParameters[selectedParameterYear][occ];
-              const current = parameters[selectedParameterYear][occ];
-              const change = ((current - baseline) / baseline * 100).toFixed(1);
+              const current = getParameterValue(parameterType, selectedParameterYear, occ);
+              const actualCurrent = parameters[selectedParameterYear][occ];
+              const change = ((actualCurrent - baseline) / baseline * 100).toFixed(1);
 
               return (
                 <div key={occ} className="space-y-2">
@@ -728,7 +759,14 @@ function App() {
                       type="number"
                       step={isPercentage ? "0.01" : "1"}
                       value={current}
-                      onChange={(e) => onUpdate(parameterType, selectedParameterYear, occ, e.target.value)}
+                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, occ, e.target.value)}
+                      onBlur={(e) => commitParameterChange(parameterType, selectedParameterYear, occ, e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          commitParameterChange(parameterType, selectedParameterYear, occ, e.target.value);
+                          e.target.blur();
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex justify-between items-center text-xs">
@@ -767,8 +805,15 @@ function App() {
                     <input
                       type="number"
                       step="0.001"
-                      value={current}
+                      value={getParameterValue(parameterType, selectedParameterYear, cat)}
                       onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}
+                      onBlur={(e) => commitParameterChange(parameterType, selectedParameterYear, cat, e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          commitParameterChange(parameterType, selectedParameterYear, cat, e.target.value);
+                          e.target.blur();
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex justify-between items-center text-xs">
