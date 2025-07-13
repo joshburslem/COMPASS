@@ -14,6 +14,7 @@ function App() {
   const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
+  const [previewProjections, setPreviewProjections] = React.useState(null); // Track preview projections
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState(() => {
@@ -215,10 +216,11 @@ function App() {
           : scenario
       );
       setScenarios(updatedScenarios);
-      
+
       setUnsavedChanges(false);
       setPendingChanges({});
-      
+      setPreviewProjections(null); // Clear the preview after applying changes
+
       console.log('Applied changes to scenario:', activeScenario);
     } else {
       // For baseline, we don't apply changes - user must create a new scenario
@@ -239,6 +241,7 @@ function App() {
     }
     setUnsavedChanges(false);
     setPendingChanges({});
+    setPreviewProjections(null); // Also clear preview when parameters are reset
   };
 
   const resetToBaseline = () => {
@@ -247,6 +250,7 @@ function App() {
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
+    setPreviewProjections(null); // Also clear preview when reset to baseline
   };
 
   const updateParameter = (paramType, year, occupation, value) => {
@@ -264,14 +268,18 @@ function App() {
       ...prev,
       [`${paramType}|${year}|${occupation}`]: true
     }));
+
+    // Generate a preview of the projections
+    const projectedData = generateSampleProjections(newParams);
+    setPreviewProjections(projectedData);
   };
 
   const createNewScenario = (scenarioData) => {
     console.log('Creating scenario with data:', scenarioData);
     console.log('Current editing parameters:', editingParameters);
-    
+
     const scenarioProjections = generateSampleProjections(editingParameters);
-    
+
     const newScenario = {
       id: Date.now().toString(),
       name: scenarioData.name,
@@ -280,15 +288,16 @@ function App() {
       projections: scenarioProjections,
       createdAt: new Date().toISOString()
     };
-    
+
     console.log('New scenario created:', newScenario);
-    
+
     const updatedScenarios = [...scenarios, newScenario];
     setScenarios(updatedScenarios);
     setActiveScenario(newScenario.id);
     setShowScenarioModal(false);
     setUnsavedChanges(false);
-    
+    setPreviewProjections(null); // Clear the preview after saving
+
     console.log('Updated scenarios list:', updatedScenarios);
   };
 
@@ -297,14 +306,14 @@ function App() {
       // Executive View ALWAYS shows baseline projections - never affected by analyst changes
       return executiveData.projections;
     }
-    
+
     // Analyst View shows SAVED scenario projections only - not live editing parameters
     if (activeScenario === 'baseline') {
       // Always show baseline projections until changes are applied
       return executiveData.projections;
     } else {
-      const scenario = scenarios.find(s => s.id === activeScenario);
-      return scenario?.projections || executiveData.projections;
+      // If there are preview projections, show those, otherwise show the saved ones
+      return previewProjections || scenarios.find(s => s.id === activeScenario)?.projections || executiveData.projections;
     }
   };
 
@@ -636,7 +645,7 @@ function App() {
               onSelectScenario={(scenarioId) => {
                 console.log('Loading scenario:', scenarioId);
                 console.log('Available scenarios:', scenarios);
-                
+
                 if (scenarioId === 'baseline') {
                   console.log('Loading baseline parameters');
                   // Always use the immutable baseline parameters - create a fresh copy
@@ -644,10 +653,11 @@ function App() {
                   setActiveScenario('baseline');
                   setUnsavedChanges(false);
                   setPendingChanges({});
+                  setPreviewProjections(null); // Clear preview when switching scenarios
                 } else {
                   const scenario = scenarios.find(s => s.id === scenarioId);
                   console.log('Found scenario:', scenario);
-                  
+
                   if (scenario && scenario.parameters) {
                     console.log('Loading scenario parameters:', scenario.parameters);
                     // Create a fresh copy of scenario parameters to avoid reference issues
@@ -655,6 +665,7 @@ function App() {
                     setActiveScenario(scenarioId);
                     setUnsavedChanges(false);
                     setPendingChanges({});
+                    setPreviewProjections(null); // Clear preview when switching scenarios
                   } else {
                     console.error('Scenario not found or missing parameters:', scenarioId);
                     // Fallback to baseline if scenario is corrupted
@@ -662,6 +673,7 @@ function App() {
                     setActiveScenario('baseline');
                     setUnsavedChanges(false);
                     setPendingChanges({});
+                    setPreviewProjections(null); // Clear preview when switching scenarios
                   }
                 }
               }}
@@ -768,8 +780,7 @@ function App() {
                       type="number"
                       step="0.001"
                       value={current}
-                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-500">
@@ -817,7 +828,7 @@ function App() {
           </button>
         </div>
       </div>
-      
+
       {activeScenario === 'baseline' && unsavedChanges && (
         <div className="p-4 bg-blue-50 rounded-lg">
           <p className="text-sm text-blue-800">
