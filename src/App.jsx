@@ -430,7 +430,7 @@ function App() {
     setUnsavedChanges(false);
   };
 
-  const updateParameter = (paramType, year, occupation, value) => {
+  const updateParameter = React.useCallback((paramType, year, occupation, value) => {
     const newParams = { ...editingParameters };
     if (!newParams[paramType][year]) {
       newParams[paramType][year] = {};
@@ -438,7 +438,7 @@ function App() {
     newParams[paramType][year][occupation] = parseFloat(value) || 0;
     setEditingParameters(newParams);
     setUnsavedChanges(true);
-  };
+  }, [editingParameters]);
 
   const createNewScenario = (scenarioData) => {
     const newScenario = {
