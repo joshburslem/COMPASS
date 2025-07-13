@@ -309,13 +309,13 @@ function App() {
       return executiveData.projections;
     }
     
-    // Analyst View shows current scenario projections
+    // Analyst View shows saved scenario projections only (not live editing parameters)
     if (activeScenario === 'baseline') {
-      // Generate projections from current editing parameters (may differ from baseline if unsaved changes)
-      return generateSampleProjections(editingParameters);
+      // Show baseline projections until changes are applied
+      return executiveData.projections;
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
-      return scenario?.projections || generateSampleProjections(editingParameters);
+      return scenario?.projections || executiveData.projections;
     }
   };
 
@@ -694,7 +694,11 @@ function App() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Parameter Impact Analysis</h3>
-          <ParameterImpactChart parameters={editingParameters} />
+          <ParameterImpactChart parameters={
+            activeScenario === 'baseline' 
+              ? workforceData.baselineParameters 
+              : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
+          } />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
