@@ -469,47 +469,7 @@ function App() {
   }, []);
 
   const applyParameterChanges = React.useCallback(() => {
-    // Only update projections for changed parameters, not regenerate everything
-    const newProjections = { ...workforceData.projections };
-    
-    // Find what changed by comparing with baseline
-    Object.keys(editingParameters).forEach(paramType => {
-      Object.keys(editingParameters[paramType]).forEach(year => {
-        Object.keys(editingParameters[paramType][year]).forEach(occupation => {
-          const currentValue = editingParameters[paramType][year][occupation];
-          const baselineValue = workforceData.baselineParameters[paramType][year][occupation];
-          
-          // Only recalculate if this specific parameter changed
-          if (currentValue !== baselineValue) {
-            if (!newProjections[year]) newProjections[year] = {};
-            if (!newProjections[year][occupation]) {
-              newProjections[year][occupation] = { ...workforceData.projections[year][occupation] };
-            }
-            
-            // Recalculate only this specific occupation/year
-            let baseSupply = editingParameters.supply[year][occupation];
-            const inflows = editingParameters.educationalInflow[year][occupation] + 
-                           editingParameters.internationalMigrants[year][occupation] + 
-                           editingParameters.domesticMigrants[year][occupation] + 
-                           editingParameters.reEntrants[year][occupation];
-            const outflows = baseSupply * (editingParameters.retirementRate[year][occupation] + 
-                                         editingParameters.attritionRate[year][occupation]);
-            
-            const newSupply = Math.round(baseSupply + inflows - outflows);
-            const baseDemand = baseSupply * 1.1; // 10% shortage baseline
-            const yearMultiplier = 1 + (parseInt(year) - 2024) * 0.02; // 2% annual growth
-            const newDemand = Math.round(baseDemand * yearMultiplier);
-            
-            newProjections[year][occupation] = {
-              supply: newSupply,
-              demand: newDemand,
-              gap: newDemand - newSupply
-            };
-          }
-        });
-      });
-    });
-
+    const newProjections = generateSampleProjections(editingParameters);
     setWorkforceData({
       ...workforceData,
       parameters: editingParameters,
