@@ -200,12 +200,13 @@ function App() {
     return params;
   }
 
-  function generateSampleProjections(parameters = null) {
+  const generateSampleProjections = (parameters) => {
+  return new Promise((resolve, reject) => {
     try {
       const years = Array.from({length: 11}, (_, i) => 2024 + i);
       const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
 
-      return years.reduce((acc, year) => {
+      const projections = years.reduce((acc, year) => {
         acc[year] = {};
         occupations.forEach(occ => {
           try {
@@ -256,20 +257,13 @@ function App() {
         });
         return acc;
       }, {});
+      resolve(projections);
     } catch (error) {
-      console.error('Error generating sample projections:', error);
-      // Return minimal fallback data
-      return {
-        2024: {
-          'Physicians': { supply: 2500, demand: 2750, gap: 250 },
-          'Nurse Practitioners': { supply: 800, demand: 880, gap: 80 },
-          'Registered Nurses': { supply: 4200, demand: 4620, gap: 420 },
-          'Licensed Practical Nurses': { supply: 1800, demand: 1980, gap: 180 },
-          'Medical Office Assistants': { supply: 3200, demand: 3520, gap: 320 }
-        }
-      };
+      console.error('Error in generateSampleProjections:', error);
+      reject(error);
     }
-  }
+  });
+};
 
   const applyParameterChanges = React.useCallback(async () => {
     try {
