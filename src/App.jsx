@@ -934,6 +934,130 @@ function App() {
     );
   };
 
+  const exportScenarioToExcel = React.useCallback((scenarioId) => {
+    try {
+      // Dynamically import xlsx to avoid build issues
+      import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then((XLSX) => {
+        let scenarioData, scenarioName;
+        
+        if (scenarioId === 'baseline') {
+          scenarioData = {
+            parameters: workforceData.baselineParameters,
+            projections: executiveData.projections
+          };
+          scenarioName = 'Baseline';
+        } else {
+          const scenario = scenarios.find(s => s.id === scenarioId);
+          if (!scenario) {
+            alert('Scenario not found');
+            return;
+          }
+          scenarioData = {
+            parameters: scenario.parameters,
+            projections: scenario.projections
+          };
+          scenarioName = scenario.name;
+        }
+
+        const workbook = XLSX.utils.book_new();
+
+        // Create summary sheet
+        const summaryData = [
+          ['Scenario Name', scenarioName],
+          ['Export Date', new Date().toLocaleDateString()],
+          ['Years Covered', '2024-2034'],
+          ['Occupations', workforceData.occupations.join(', ')],
+          [''],
+          ['Summary Statistics'],
+          ['Year', 'Total Supply', 'Total Demand', 'Total Gap']
+        ];
+
+        Object.keys(scenarioData.projections).sort().forEach(year => {
+          const yearData = scenarioData.projections[year];
+          const totalSupply = Object.values(yearData).reduce((sum, occ) => sum + (occ.supply || 0), 0);
+          const totalDemand = Object.values(yearData).reduce((sum, occ) => sum + (occ.demand || 0), 0);
+          const totalGap = totalDemand - totalSupply;
+          summaryData.push([year, totalSupply, totalDemand, totalGap]);
+        });
+
+        const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+        // Create detailed projections sheet
+        const projectionsData = [
+          ['Year', 'Occupation', 'Supply', 'Demand', 'Gap']
+        ];
+
+        Object.keys(scenarioData.projections).sort().forEach(year => {
+          const yearData = scenarioData.projections[year];
+          workforceData.occupations.forEach(occ => {
+            const occData = yearData[occ] || { supply: 0, demand: 0, gap: 0 };
+            projectionsData.push([year, occ, occData.supply, occData.demand, occData.gap]);
+          });
+        });
+
+        const projectionsSheet = XLSX.utils.aoa_to_sheet(projectionsData);
+        XLSX.utils.book_append_sheet(workbook, projectionsSheet, 'Workforce Projections');
+
+        // Create parameters sheets
+        const parameterTypes = [
+          { key: 'supply', name: 'Current Supply' },
+          { key: 'educationalInflow', name: 'Educational Inflow' },
+          { key: 'internationalMigrants', name: 'International Migrants' },
+          { key: 'domesticMigrants', name: 'Domestic Migrants' },
+          { key: 'reEntrants', name: 'Re-Entrants' },
+          { key: 'retirementRate', name: 'Retirement Rate' },
+          { key: 'attritionRate', name: 'Attrition Rate' }
+        ];
+
+        parameterTypes.forEach(paramType => {
+          const paramData = [['Year', ...workforceData.occupations]];
+          
+          Object.keys(scenarioData.parameters[paramType.key] || {}).sort().forEach(year => {
+            const yearParams = scenarioData.parameters[paramType.key][year] || {};
+            const row = [year];
+            workforceData.occupations.forEach(occ => {
+              row.push(yearParams[occ] || 0);
+            });
+            paramData.push(row);
+          });
+
+          const paramSheet = XLSX.utils.aoa_to_sheet(paramData);
+          XLSX.utils.book_append_sheet(workbook, paramSheet, paramType.name);
+        });
+
+        // Create demand parameters sheet
+        const demandData = [
+          ['Year', 'Parameter', 'Value']
+        ];
+
+        ['populationGrowth', 'healthStatusChange', 'serviceUtilization'].forEach(paramType => {
+          Object.keys(scenarioData.parameters[paramType] || {}).sort().forEach(year => {
+            const yearParams = scenarioData.parameters[paramType][year] || {};
+            Object.keys(yearParams).forEach(category => {
+              demandData.push([year, `${paramType} - ${category}`, yearParams[category]]);
+            });
+          });
+        });
+
+        const demandSheet = XLSX.utils.aoa_to_sheet(demandData);
+        XLSX.utils.book_append_sheet(workbook, demandSheet, 'Demand Parameters');
+
+        // Generate filename and download
+        const filename = `${scenarioName.replace(/[^a-z0-9]/gi, '_')}_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(workbook, filename);
+        
+        console.log(`Exported scenario: ${scenarioName}`);
+      }).catch(error => {
+        console.error('Error loading XLSX library:', error);
+        alert('Error loading Excel export library. Please try again.');
+      });
+    } catch (error) {
+      console.error('Error exporting scenario:', error);
+      alert('Error exporting scenario. Please try again.');
+    }
+  }, [scenarios, workforceData, executiveData]);
+
   const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -957,8 +1081,12 @@ function App() {
           >
             {activeScenario === 'working' ? 'Save as New Scenario' : 'Create New Scenario'}
           </button>
-          <button className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700">
-            Export Scenario
+          <button 
+            onClick={() => exportScenarioToExcel(activeScenario)}
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+            title="Export current scenario to Excel"
+          >
+            Export to Excel
           </button>
         </div>
       </div>
@@ -978,18 +1106,26 @@ function App() {
           <div className="space-y-2">
             {scenarios.map(scenario => (
               <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div>
+                <div className="flex-1">
                   <p className="font-medium">{scenario.name}</p>
                   <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
+                  <p className="text-xs text-gray-500">Created: {new Date(scenario.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex space-x-2">
                   <button 
                     onClick={() => onSelectScenario(scenario.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded"
                   >
                     Load
                   </button>
-                  <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+                  <button 
+                    onClick={() => exportScenarioToExcel(scenario.id)}
+                    className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
+                    title="Export this scenario to Excel"
+                  >
+                    Export
+                  </button>
+                  <button className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded">
                     Delete
                   </button>
                 </div>
@@ -998,6 +1134,30 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Export Options Section */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+        <h5 className="font-medium text-blue-800 mb-2">Export Information</h5>
+        <p className="text-sm text-blue-700 mb-3">
+          Excel exports include comprehensive data for the selected scenario:
+        </p>
+        <ul className="text-xs text-blue-600 space-y-1">
+          <li>• Summary statistics and projections for all years (2024-2034)</li>
+          <li>• Detailed workforce supply, demand, and gap data by occupation</li>
+          <li>• All parameter values (supply, inflows, outflows, demand drivers)</li>
+          <li>• Population growth and health status change assumptions</li>
+          <li>• Service utilization parameters</li>
+        </ul>
+        <div className="mt-3 flex space-x-2">
+          <button 
+            onClick={() => exportScenarioToExcel('baseline')}
+            className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+          >
+            Export Baseline
+          </button>
+          <span className="text-xs text-blue-600">or use the Export button above for the active scenario</span>
+        </div>
+      </div>
     </div>
   );
 
