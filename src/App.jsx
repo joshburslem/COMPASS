@@ -11,6 +11,7 @@ function App() {
   const [showDataImport, setShowDataImport] = React.useState(false);
   const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
   const [activeParameterTab, setActiveParameterTab] = React.useState('supply');
+  const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
 
@@ -443,6 +444,28 @@ function App() {
           </div>
         </div>
 
+        {/* Year Selector */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Parameter Configuration</h3>
+              <p className="text-sm text-gray-600">Edit parameters for the selected year</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-medium text-gray-700">Editing Year:</label>
+              <select 
+                value={selectedParameterYear} 
+                onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Parameter Tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
@@ -618,144 +641,80 @@ function App() {
   );
 
   const ParameterGridWithBaseline = ({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
-    const years = Object.keys(parameters).sort();
-    const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
-
-    const toggleYear = (year) => {
-      const newExpanded = new Set(expandedYears);
-      if (newExpanded.has(year)) {
-        newExpanded.delete(year);
-      } else {
-        newExpanded.add(year);
-      }
-      setExpandedYears(newExpanded);
-    };
-
     return (
       <div>
         <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
-        <div className="space-y-2">
-          {years.map(year => (
-            <div key={year} className="border rounded-lg">
-              <button
-                onClick={() => toggleYear(year)}
-                className="w-full px-4 py-2 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <span className="font-medium">{year}</span>
-                <svg 
-                  className={`w-5 h-5 transform transition-transform ${expandedYears.has(year) ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+        <div className="bg-white border rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {occupations.map(occ => {
+              const baseline = baselineParameters[selectedParameterYear][occ];
+              const current = parameters[selectedParameterYear][occ];
+              const change = ((current - baseline) / baseline * 100).toFixed(1);
 
-              {expandedYears.has(year) && (
-                <div className="p-4 bg-white">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {occupations.map(occ => {
-                      const baseline = baselineParameters[year][occ];
-                      const current = parameters[year][occ];
-                      const change = ((current - baseline) / baseline * 100).toFixed(1);
-
-                      return (
-                        <div key={occ} className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">{occ}</label>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              step={isPercentage ? "0.01" : "1"}
-                              value={current}
-                              onChange={(e) => onUpdate(parameterType, year, occ, e.target.value)}
-                              className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <span className={`text-xs ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
-                          </p>
-                        </div>
-                      );
-                    })}
+              return (
+                <div key={occ} className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">{occ}</label>
+                  <div className="space-y-1">
+                    <input
+                      type="number"
+                      step={isPercentage ? "0.01" : "1"}
+                      value={current}
+                      onChange={(e) => onUpdate(parameterType, selectedParameterYear, occ, e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500">
+                        Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
+                      </span>
+                      <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
+                      </span>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       </div>
     );
   };
 
   const DemandParameterGrid = ({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
-    const years = Object.keys(parameters).sort();
-    const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
-
-    const toggleYear = (year) => {
-      const newExpanded = new Set(expandedYears);
-      if (newExpanded.has(year)) {
-        newExpanded.delete(year);
-      } else {
-        newExpanded.add(year);
-      }
-      setExpandedYears(newExpanded);
-    };
-
     return (
       <div>
         <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
-        <div className="space-y-2">
-          {years.map(year => (
-            <div key={year} className="border rounded-lg">
-              <button
-                onClick={() => toggleYear(year)}
-                className="w-full px-4 py-2 flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <span className="font-medium">{year}</span>
-                <svg 
-                  className={`w-5 h-5 transform transition-transform ${expandedYears.has(year) ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+        <div className="bg-white border rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {categories.map(cat => {
+              const baseline = baselineParameters[selectedParameterYear][cat];
+              const current = parameters[selectedParameterYear][cat];
+              const change = ((current - baseline) / baseline * 100).toFixed(1);
 
-              {expandedYears.has(year) && (
-                <div className="p-4 bg-white">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {categories.map(cat => {
-                      const baseline = baselineParameters[year][cat];
-                      const current = parameters[year][cat];
-
-                      return (
-                        <div key={cat} className="space-y-1">
-                          <label className="text-sm font-medium text-gray-700">{cat}</label>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              step="0.001"
-                              value={current}
-                              onChange={(e) => updateParameter(parameterType, year, cat, e.target.value)}
-                              className="flex-1 border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500">
-                            Baseline: {(baseline * 100).toFixed(1)}%
-                          </p>
-                        </div>
-                      );
-                    })}
+              return (
+                <div key={cat} className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">{cat}</label>
+                  <div className="space-y-1">
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={current}
+                      onChange={(e) => updateParameter(parameterType, selectedParameterYear, cat, e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500">
+                        Baseline: {(baseline * 100).toFixed(1)}%
+                      </span>
+                      <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
+                      </span>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       </div>
     );
