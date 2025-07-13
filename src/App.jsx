@@ -82,6 +82,8 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
   );
 });
 
+ParameterGridWithBaseline.displayName = 'ParameterGridWithBaseline';
+
 const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
   const years = Object.keys(parameters).sort();
   const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
@@ -157,6 +159,8 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
     </div>
   );
 });
+
+DemandParameterGrid.displayName = 'DemandParameterGrid';
 
 const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
   <div className="space-y-4">
@@ -253,8 +257,32 @@ function App() {
     parameters: workforceData.baselineParameters
   });
 
-  // Temporary parameters for editing in Analyst View
-  const [editingParameters, setEditingParameters] = React.useState(workforceData.parameters);
+  // Use useReducer for more stable parameter updates
+  const [editingParameters, dispatch] = React.useReducer(
+    (state, action) => {
+      switch (action.type) {
+        case 'UPDATE_PARAMETER':
+          const { paramType, year, occupation, value } = action.payload;
+          return {
+            ...state,
+            [paramType]: {
+              ...state[paramType],
+              [year]: {
+                ...state[paramType][year],
+                [occupation]: parseFloat(value) || 0
+              }
+            }
+          };
+        case 'RESET_PARAMETERS':
+          return action.payload;
+        case 'LOAD_SCENARIO':
+          return action.payload;
+        default:
+          return state;
+      }
+    },
+    workforceData.parameters
+  );
 
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
@@ -425,19 +453,15 @@ function App() {
     // Note: Executive view remains unchanged
   };
 
-  const resetParameters = () => {
-    setEditingParameters(workforceData.parameters);
+  const resetParameters = React.useCallback(() => {
+    dispatch({ type: 'RESET_PARAMETERS', payload: workforceData.parameters });
     setUnsavedChanges(false);
-  };
+  }, [workforceData.parameters]);
 
   const updateParameter = React.useCallback((paramType, year, occupation, value) => {
-    setEditingParameters(prevParams => {
-      const newParams = { ...prevParams };
-      if (!newParams[paramType][year]) {
-        newParams[paramType][year] = {};
-      }
-      newParams[paramType][year][occupation] = parseFloat(value) || 0;
-      return newParams;
+    dispatch({
+      type: 'UPDATE_PARAMETER',
+      payload: { paramType, year, occupation, value }
     });
     setUnsavedChanges(true);
   }, []);
@@ -740,7 +764,7 @@ function App() {
               onSelectScenario={(scenarioId) => {
                 const scenario = scenarios.find(s => s.id === scenarioId);
                 if (scenario) {
-                  setEditingParameters(scenario.parameters);
+                  dispatch({ type: 'LOAD_SCENARIO', payload: scenario.parameters });
                   setActiveScenario(scenarioId);
                 }
               }}
