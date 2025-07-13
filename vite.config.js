@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5000,
     strictPort: true,
     hmr: {
-      port: 443
+      port: 5001
     },
     allowedHosts: ['localhost', '.replit.dev']
   }
