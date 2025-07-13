@@ -277,11 +277,15 @@ function App() {
     const newScenario = {
       id: Date.now().toString(),
       name: scenarioData.name,
-      parameters: { ...editingParameters },
-      ...scenarioData
+      description: scenarioData.description,
+      parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
+      createdAt: new Date().toISOString()
     };
-    setScenarios([...scenarios, newScenario]);
+    const updatedScenarios = [...scenarios, newScenario];
+    setScenarios(updatedScenarios);
+    setActiveScenario(newScenario.id);
     setShowScenarioModal(false);
+    setUnsavedChanges(false);
   };
 
   const toggleOccupation = (occupation) => {
@@ -599,10 +603,17 @@ function App() {
               activeScenario={activeScenario}
               onCreateScenario={() => setShowScenarioModal(true)}
               onSelectScenario={(scenarioId) => {
-                const scenario = scenarios.find(s => s.id === scenarioId);
-                if (scenario) {
-                  setEditingParameters(scenario.parameters);
-                  setActiveScenario(scenarioId);
+                if (scenarioId === 'baseline') {
+                  setEditingParameters(workforceData.baselineParameters);
+                  setActiveScenario('baseline');
+                  setUnsavedChanges(false);
+                } else {
+                  const scenario = scenarios.find(s => s.id === scenarioId);
+                  if (scenario) {
+                    setEditingParameters(scenario.parameters);
+                    setActiveScenario(scenarioId);
+                    setUnsavedChanges(false);
+                  }
                 }
               }}
             />
@@ -1126,37 +1137,70 @@ function App() {
     </div>
   );
 
-  const ScenarioModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96">
-        <h3 className="text-lg font-semibold mb-4">Create New Scenario</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Scenario Name</label>
-            <input type="text" className="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="e.g., Increased Training Seats" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea className="w-full border border-gray-300 rounded-md px-3 py-2" rows="3" placeholder="Describe the scenario changes..."></textarea>
-          </div>
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => setShowScenarioModal(false)}
-              className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={() => createNewScenario({ name: 'New Scenario', description: 'Test scenario' })}
-              className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-            >
-              Create
-            </button>
+  const ScenarioModal = () => {
+    const [scenarioName, setScenarioName] = React.useState('');
+    const [scenarioDescription, setScenarioDescription] = React.useState('');
+
+    const handleCreate = () => {
+      if (scenarioName.trim()) {
+        createNewScenario({ 
+          name: scenarioName.trim(), 
+          description: scenarioDescription.trim() 
+        });
+        setScenarioName('');
+        setScenarioDescription('');
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96">
+          <h3 className="text-lg font-semibold mb-4">Create New Scenario</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Scenario Name</label>
+              <input 
+                type="text" 
+                value={scenarioName}
+                onChange={(e) => setScenarioName(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2" 
+                placeholder="e.g., Increased Training Seats" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea 
+                value={scenarioDescription}
+                onChange={(e) => setScenarioDescription(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2" 
+                rows="3" 
+                placeholder="Describe the scenario changes..."
+              ></textarea>
+            </div>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => {
+                  setShowScenarioModal(false);
+                  setScenarioName('');
+                  setScenarioDescription('');
+                }}
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleCreate}
+                disabled={!scenarioName.trim()}
+                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
