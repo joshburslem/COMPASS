@@ -562,7 +562,7 @@ function App() {
     </div>
   );
 
-  const ParameterGridWithBaseline = ({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
+  const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
     const years = Object.keys(parameters).sort();
     const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
 
@@ -634,9 +634,9 @@ function App() {
         </div>
       </div>
     );
-  };
+  });
 
-  const DemandParameterGrid = ({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
+  const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
     const years = Object.keys(parameters).sort();
     const [expandedYears, setExpandedYears] = React.useState(new Set(['2024']));
 
@@ -704,7 +704,7 @@ function App() {
         </div>
       </div>
     );
-  };
+  });
 
   const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => (
     <div className="space-y-4">
