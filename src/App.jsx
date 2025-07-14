@@ -1091,7 +1091,10 @@ function App() {
           
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
-            <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
+            <DetailedSupplyDemandChart 
+              data={getCurrentScenarioProjections()} 
+              selectedOccupations={getFilteredOccupations()}
+            />
           ) : (
             <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
               <div className="text-center">
@@ -1702,27 +1705,91 @@ function App() {
     );
   };
 
-  const DetailedSupplyDemandChart = ({ data }) => {
+  const DetailedSupplyDemandChart = ({ data, selectedOccupations }) => {
     const years = Object.keys(data).sort();
     const chartData = years.map(year => {
       const yearData = { year };
-      const totalSupply = Object.values(data[year]).reduce((sum, occ) => sum + occ.supply, 0);
-      const totalDemand = Object.values(data[year]).reduce((sum, occ) => sum + occ.demand, 0);
-      yearData.supply = totalSupply;
-      yearData.demand = totalDemand;
+      
+      // Calculate supply and demand for each selected occupation
+      selectedOccupations.forEach(occ => {
+        const occData = data[year][occ] || { supply: 0, demand: 0 };
+        yearData[`${occ}_supply`] = occData.supply;
+        yearData[`${occ}_demand`] = occData.demand;
+      });
+      
       return yearData;
     });
+
+    const colors = {
+      'Physicians': '#3B82F6',
+      'Nurse Practitioners': '#10B981',
+      'Registered Nurses': '#F59E0B',
+      'Licensed Practical Nurses': '#EF4444',
+      'Medical Office Assistants': '#8B5CF6'
+    };
+
+    const CustomTooltip = ({ active, payload, label }) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+            <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
+            {payload.map((entry, index) => {
+              const [occupation, type] = entry.dataKey.split('_');
+              return (
+                <p key={index} className="text-sm" style={{ color: entry.color }}>
+                  {`${occupation} ${type}: ${entry.value.toLocaleString()} FTE`}
+                </p>
+              );
+            })}
+          </div>
+        );
+      }
+      return null;
+    };
 
     return (
       <div className="h-96 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis />
-            <Tooltip />
-            <Area type="monotone" dataKey="demand" stackId="1" stroke="#EF4444" fill="#FEE2E2" name="Total Demand" />
-            <Area type="monotone" dataKey="supply" stackId="2" stroke="#3B82F6" fill="#DBEAFE" name="Total Supply" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis 
+              dataKey="year" 
+              stroke="#6B7280"
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+            />
+            <YAxis 
+              stroke="#6B7280"
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+              label={{ value: 'Workforce (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              verticalAlign="bottom" 
+              height={36}
+              wrapperStyle={{ paddingTop: '20px' }}
+            />
+            {selectedOccupations.map(occ => [
+              <Area
+                key={`${occ}_demand`}
+                type="monotone"
+                dataKey={`${occ}_demand`}
+                stackId={`${occ}_stack`}
+                stroke={colors[occ] || '#6B7280'}
+                fill={colors[occ] ? `${colors[occ]}40` : '#6B728040'}
+                name={`${occ} Demand`}
+                strokeWidth={2}
+              />,
+              <Area
+                key={`${occ}_supply`}
+                type="monotone"
+                dataKey={`${occ}_supply`}
+                stackId={`${occ}_stack`}
+                stroke={colors[occ] || '#6B7280'}
+                fill={colors[occ] ? `${colors[occ]}80` : '#6B728080'}
+                name={`${occ} Supply`}
+                strokeWidth={2}
+              />
+            ]).flat()}
           </AreaChart>
         </ResponsiveContainer>
       </div>
