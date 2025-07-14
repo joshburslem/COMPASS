@@ -206,6 +206,8 @@ function App() {
   const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
+  const [visualizationsNeedUpdate, setVisualizationsNeedUpdate] = React.useState(false);
+  const [lastAppliedProjections, setLastAppliedProjections] = React.useState(null);
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState(() => {
@@ -458,6 +460,9 @@ function App() {
         setScenarios(updatedScenarios);
       }
 
+      // Store the new projections and trigger visualization updates
+      setLastAppliedProjections(newProjections);
+      setVisualizationsNeedUpdate(true);
       setUnsavedChanges(false);
       setPendingChanges({});
 
@@ -496,7 +501,18 @@ function App() {
     setActiveScenario('baseline');
     setUnsavedChanges(false);
     setPendingChanges({});
+    setVisualizationsNeedUpdate(false);
+    setLastAppliedProjections(null);
   };
+
+  // Effect to handle visualization updates only when changes are applied
+  React.useEffect(() => {
+    if (visualizationsNeedUpdate && lastAppliedProjections) {
+      console.log('Updating specific visualizations with applied changes');
+      // Reset the flag after processing
+      setVisualizationsNeedUpdate(false);
+    }
+  }, [visualizationsNeedUpdate, lastAppliedProjections]);
 
   const updateParameter = React.useCallback((paramType, year, occupation, value) => {
     try {
@@ -967,50 +983,87 @@ function App() {
       {/* Visualizations */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-<div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold">
               Projected Workforce Gap Trends 
               <span className="text-sm font-normal text-gray-600 ml-2">
                 ({activeScenario === 'baseline' 
                   ? 'Baseline' 
                   : activeScenario === 'working'
-                    ? 'Working Changes (unsaved)'
+                    ? 'Working Changes (applied)'
                     : scenarios.find(s => s.id === activeScenario)?.name || 'Current Scenario'})
               </span>
             </h3>
             {activeScenario === 'working' && (
-              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                 APPLIED CHANGES
               </span>
             )}
           </div>
-          <WorkforceGapTrendChart 
-            data={getCurrentScenarioProjections()} 
-            selectedOccupations={workforceData.occupations}
-          />
+          {/* Only render when changes are applied or scenario is loaded */}
+          {(activeScenario !== 'baseline' || !unsavedChanges) ? (
+            <WorkforceGapTrendChart 
+              data={getCurrentScenarioProjections()} 
+              selectedOccupations={workforceData.occupations}
+            />
+          ) : (
+            <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <p className="text-gray-600 mb-2">Chart will update when changes are applied</p>
+                <p className="text-sm text-gray-500">Make parameter adjustments and click "Apply Changes"</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold">Supply vs Demand Analysis</h3>
             {activeScenario === 'working' && (
-              <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                 APPLIED CHANGES
               </span>
             )}
           </div>
-          <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
+          {/* Only render when changes are applied or scenario is loaded */}
+          {(activeScenario !== 'baseline' || !unsavedChanges) ? (
+            <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
+          ) : (
+            <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <p className="text-gray-600 mb-2">Chart will update when changes are applied</p>
+                <p className="text-sm text-gray-500">Make parameter adjustments and click "Apply Changes"</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-semibold mb-4">Parameter Impact Analysis</h3>
-          <ParameterImpactChart parameters={
-            activeScenario === 'baseline' 
-              ? workforceData.baselineParameters 
-              : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-          } />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">Parameter Impact Analysis</h3>
+            {activeScenario === 'working' && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                APPLIED CHANGES
+              </span>
+            )}
+          </div>
+          {/* Only render when changes are applied or scenario is loaded */}
+          {(activeScenario !== 'baseline' || !unsavedChanges) ? (
+            <ParameterImpactChart parameters={
+              activeScenario === 'baseline' 
+                ? workforceData.baselineParameters 
+                : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
+            } />
+          ) : (
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <p className="text-gray-600 mb-2">Chart will update when changes are applied</p>
+                <p className="text-sm text-gray-500">Make parameter adjustments and click "Apply Changes"</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
