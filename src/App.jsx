@@ -936,118 +936,16 @@ function App() {
 
   const exportScenarioToExcel = React.useCallback((scenarioId) => {
     try {
+      // Check if XLSX is already loaded to prevent multiple loads during HMR
+      if (window.XLSX) {
+        handleExcelExport(window.XLSX, scenarioId);
+        return;
+      }
+      
       // Dynamically import xlsx to avoid build issues
       import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then((XLSX) => {
-        let scenarioData, scenarioName;
-        
-        if (scenarioId === 'baseline') {
-          scenarioData = {
-            parameters: workforceData.baselineParameters,
-            projections: executiveData.projections
-          };
-          scenarioName = 'Baseline';
-        } else {
-          const scenario = scenarios.find(s => s.id === scenarioId);
-          if (!scenario) {
-            alert('Scenario not found');
-            return;
-          }
-          scenarioData = {
-            parameters: scenario.parameters,
-            projections: scenario.projections
-          };
-          scenarioName = scenario.name;
-        }
-
-        const workbook = XLSX.utils.book_new();
-
-        // Create summary sheet
-        const summaryData = [
-          ['Scenario Name', scenarioName],
-          ['Export Date', new Date().toLocaleDateString()],
-          ['Years Covered', '2024-2034'],
-          ['Occupations', workforceData.occupations.join(', ')],
-          [''],
-          ['Summary Statistics'],
-          ['Year', 'Total Supply', 'Total Demand', 'Total Gap']
-        ];
-
-        Object.keys(scenarioData.projections).sort().forEach(year => {
-          const yearData = scenarioData.projections[year];
-          const totalSupply = Object.values(yearData).reduce((sum, occ) => sum + (occ.supply || 0), 0);
-          const totalDemand = Object.values(yearData).reduce((sum, occ) => sum + (occ.demand || 0), 0);
-          const totalGap = totalDemand - totalSupply;
-          summaryData.push([year, totalSupply, totalDemand, totalGap]);
-        });
-
-        const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-        // Create detailed projections sheet
-        const projectionsData = [
-          ['Year', 'Occupation', 'Supply', 'Demand', 'Gap']
-        ];
-
-        Object.keys(scenarioData.projections).sort().forEach(year => {
-          const yearData = scenarioData.projections[year];
-          workforceData.occupations.forEach(occ => {
-            const occData = yearData[occ] || { supply: 0, demand: 0, gap: 0 };
-            projectionsData.push([year, occ, occData.supply, occData.demand, occData.gap]);
-          });
-        });
-
-        const projectionsSheet = XLSX.utils.aoa_to_sheet(projectionsData);
-        XLSX.utils.book_append_sheet(workbook, projectionsSheet, 'Workforce Projections');
-
-        // Create parameters sheets
-        const parameterTypes = [
-          { key: 'supply', name: 'Current Supply' },
-          { key: 'educationalInflow', name: 'Educational Inflow' },
-          { key: 'internationalMigrants', name: 'International Migrants' },
-          { key: 'domesticMigrants', name: 'Domestic Migrants' },
-          { key: 'reEntrants', name: 'Re-Entrants' },
-          { key: 'retirementRate', name: 'Retirement Rate' },
-          { key: 'attritionRate', name: 'Attrition Rate' }
-        ];
-
-        parameterTypes.forEach(paramType => {
-          const paramData = [['Year', ...workforceData.occupations]];
-          
-          Object.keys(scenarioData.parameters[paramType.key] || {}).sort().forEach(year => {
-            const yearParams = scenarioData.parameters[paramType.key][year] || {};
-            const row = [year];
-            workforceData.occupations.forEach(occ => {
-              row.push(yearParams[occ] || 0);
-            });
-            paramData.push(row);
-          });
-
-          const paramSheet = XLSX.utils.aoa_to_sheet(paramData);
-          XLSX.utils.book_append_sheet(workbook, paramSheet, paramType.name);
-        });
-
-        // Create demand parameters sheet
-        const demandData = [
-          ['Year', 'Parameter', 'Value']
-        ];
-
-        ['populationGrowth', 'healthStatusChange', 'serviceUtilization'].forEach(paramType => {
-          Object.keys(scenarioData.parameters[paramType] || {}).sort().forEach(year => {
-            const yearParams = scenarioData.parameters[paramType][year] || {};
-            Object.keys(yearParams).forEach(category => {
-              demandData.push([year, `${paramType} - ${category}`, yearParams[category]]);
-            });
-          });
-        });
-
-        const demandSheet = XLSX.utils.aoa_to_sheet(demandData);
-        XLSX.utils.book_append_sheet(workbook, demandSheet, 'Demand Parameters');
-
-        // Generate filename and download
-        const filename = `${scenarioName.replace(/[^a-z0-9]/gi, '_')}_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
-        XLSX.writeFile(workbook, filename);
-        
-        console.log(`Exported scenario: ${scenarioName}`);
+        window.XLSX = XLSX; // Cache for HMR
+        handleExcelExport(XLSX, scenarioId);
       }).catch(error => {
         console.error('Error loading XLSX library:', error);
         alert('Error loading Excel export library. Please try again.');
@@ -1055,6 +953,124 @@ function App() {
     } catch (error) {
       console.error('Error exporting scenario:', error);
       alert('Error exporting scenario. Please try again.');
+    }
+  }, [scenarios, workforceData, executiveData]);
+
+  const handleExcelExport = React.useCallback((XLSX, scenarioId) => {
+    try {
+        let scenarioData, scenarioName;
+      
+      if (scenarioId === 'baseline') {
+        scenarioData = {
+          parameters: workforceData.baselineParameters,
+          projections: executiveData.projections
+        };
+        scenarioName = 'Baseline';
+      } else {
+        const scenario = scenarios.find(s => s.id === scenarioId);
+        if (!scenario) {
+          alert('Scenario not found');
+          return;
+        }
+        scenarioData = {
+          parameters: scenario.parameters,
+          projections: scenario.projections
+        };
+        scenarioName = scenario.name;
+      }
+
+      const workbook = XLSX.utils.book_new();
+
+      // Create summary sheet
+      const summaryData = [
+        ['Scenario Name', scenarioName],
+        ['Export Date', new Date().toLocaleDateString()],
+        ['Years Covered', '2024-2034'],
+        ['Occupations', workforceData.occupations.join(', ')],
+        [''],
+        ['Summary Statistics'],
+        ['Year', 'Total Supply', 'Total Demand', 'Total Gap']
+      ];
+
+      Object.keys(scenarioData.projections).sort().forEach(year => {
+        const yearData = scenarioData.projections[year];
+        const totalSupply = Object.values(yearData).reduce((sum, occ) => sum + (occ.supply || 0), 0);
+        const totalDemand = Object.values(yearData).reduce((sum, occ) => sum + (occ.demand || 0), 0);
+        const totalGap = totalDemand - totalSupply;
+        summaryData.push([year, totalSupply, totalDemand, totalGap]);
+      });
+
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+      // Create detailed projections sheet
+      const projectionsData = [
+        ['Year', 'Occupation', 'Supply', 'Demand', 'Gap']
+      ];
+
+      Object.keys(scenarioData.projections).sort().forEach(year => {
+        const yearData = scenarioData.projections[year];
+        workforceData.occupations.forEach(occ => {
+          const occData = yearData[occ] || { supply: 0, demand: 0, gap: 0 };
+          projectionsData.push([year, occ, occData.supply, occData.demand, occData.gap]);
+        });
+      });
+
+      const projectionsSheet = XLSX.utils.aoa_to_sheet(projectionsData);
+      XLSX.utils.book_append_sheet(workbook, projectionsSheet, 'Workforce Projections');
+
+      // Create parameters sheets
+      const parameterTypes = [
+        { key: 'supply', name: 'Current Supply' },
+        { key: 'educationalInflow', name: 'Educational Inflow' },
+        { key: 'internationalMigrants', name: 'International Migrants' },
+        { key: 'domesticMigrants', name: 'Domestic Migrants' },
+        { key: 'reEntrants', name: 'Re-Entrants' },
+        { key: 'retirementRate', name: 'Retirement Rate' },
+        { key: 'attritionRate', name: 'Attrition Rate' }
+      ];
+
+      parameterTypes.forEach(paramType => {
+        const paramData = [['Year', ...workforceData.occupations]];
+        
+        Object.keys(scenarioData.parameters[paramType.key] || {}).sort().forEach(year => {
+          const yearParams = scenarioData.parameters[paramType.key][year] || {};
+          const row = [year];
+          workforceData.occupations.forEach(occ => {
+            row.push(yearParams[occ] || 0);
+          });
+          paramData.push(row);
+        });
+
+        const paramSheet = XLSX.utils.aoa_to_sheet(paramData);
+        XLSX.utils.book_append_sheet(workbook, paramSheet, paramType.name);
+      });
+
+      // Create demand parameters sheet
+      const demandData = [
+        ['Year', 'Parameter', 'Value']
+      ];
+
+      ['populationGrowth', 'healthStatusChange', 'serviceUtilization'].forEach(paramType => {
+        Object.keys(scenarioData.parameters[paramType] || {}).sort().forEach(year => {
+          const yearParams = scenarioData.parameters[paramType][year] || {};
+          Object.keys(yearParams).forEach(category => {
+            demandData.push([year, `${paramType} - ${category}`, yearParams[category]]);
+          });
+        });
+      });
+
+      const demandSheet = XLSX.utils.aoa_to_sheet(demandData);
+      XLSX.utils.book_append_sheet(workbook, demandSheet, 'Demand Parameters');
+
+      // Generate filename and download
+      const filename = `${scenarioName.replace(/[^a-z0-9]/gi, '_')}_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+      
+      console.log(`Exported scenario: ${scenarioName}`);
+    } catch (error) {
+      console.error('Error in Excel export:', error);
+      alert('Error during Excel export. Please try again.');
     }
   }, [scenarios, workforceData, executiveData]);
 
@@ -1610,6 +1626,17 @@ function App() {
       </div>
     );
   };
+
+  // Clean up any existing timers or intervals during HMR
+  React.useEffect(() => {
+    return () => {
+      // Clear any pending timeouts or intervals
+      const highestTimeoutId = setTimeout(";");
+      for (let i = 0; i < highestTimeoutId; i++) {
+        clearTimeout(i);
+      }
+    };
+  }, []);
 
   return (
     <ErrorBoundary>
