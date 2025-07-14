@@ -61,8 +61,10 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
       setTimeout(() => {
         if (input && document.contains(input)) {
           input.focus();
-          // For number inputs, we can't use setSelectionRange
-          // The browser will handle cursor positioning appropriately
+          // For number inputs, select all text content
+          if (input.type === 'number') {
+            input.select();
+          }
         }
       }, 0);
     }
@@ -138,8 +140,10 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
       setTimeout(() => {
         if (input && document.contains(input)) {
           input.focus();
-          // For number inputs, we can't use setSelectionRange
-          // The browser will handle cursor positioning appropriately
+          // For number inputs, select all text content
+          if (input.type === 'number') {
+            input.select();
+          }
         }
       }, 0);
     }
@@ -782,7 +786,8 @@ function App() {
     if (selectedOccupations.includes('All')) {
       return workforceData.occupations;
     }
-    return selectedOccupations;
+    return```text
+selectedOccupations;
   };
 
   const ExecutiveView = () => (
@@ -1524,7 +1529,8 @@ function App() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
             <select 
-              value={activeScenario}
+              ```text
+      value={activeScenario}
               onChange={(e) => onSelectScenario(e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2"
             >
@@ -2268,7 +2274,7 @@ function App() {
                 disabled={isProcessing}
               >
                 <option value="baseline">Baseline Population Projections</option>
-                <option value="supply" disabled>Workforce Supply Data (Coming Soon)</option>
+                <option value="supply" disabled>Workforce Supply Data (ComingSoon)</option>
                 <option value="demand" disabled>Service Utilization Data (Coming Soon)</option>
                 <option value="health" disabled>HealthStatus Data (Coming Soon)</option>
               </select>
