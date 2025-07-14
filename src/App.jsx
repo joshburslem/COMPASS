@@ -1715,6 +1715,7 @@ function App() {
         const occData = data[year][occ] || { supply: 0, demand: 0 };
         yearData[`${occ}_supply`] = occData.supply;
         yearData[`${occ}_demand`] = occData.demand;
+        yearData[`${occ}_gap`] = occData.demand - occData.supply;
       });
       
       return yearData;
@@ -1730,17 +1731,41 @@ function App() {
 
     const CustomTooltip = ({ active, payload, label }) => {
       if (active && payload && payload.length) {
+        // Group payload by occupation
+        const occupationData = {};
+        payload.forEach(entry => {
+          const [occupation, type] = entry.dataKey.split('_');
+          if (!occupationData[occupation]) {
+            occupationData[occupation] = {};
+          }
+          occupationData[occupation][type] = entry.value;
+        });
+
         return (
-          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-xs">
             <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
-            {payload.map((entry, index) => {
-              const [occupation, type] = entry.dataKey.split('_');
-              return (
-                <p key={index} className="text-sm" style={{ color: entry.color }}>
-                  {`${occupation} ${type}: ${entry.value.toLocaleString()} FTE`}
-                </p>
-              );
-            })}
+            {Object.entries(occupationData).map(([occupation, data]) => (
+              <div key={occupation} className="mb-2 last:mb-0">
+                <p className="text-sm font-medium text-gray-700">{occupation}</p>
+                <div className="ml-2 space-y-1">
+                  {data.supply !== undefined && (
+                    <p className="text-xs" style={{ color: colors[occupation] }}>
+                      Supply: {data.supply.toLocaleString()} FTE
+                    </p>
+                  )}
+                  {data.demand !== undefined && (
+                    <p className="text-xs" style={{ color: colors[occupation] }}>
+                      Demand: {data.demand.toLocaleString()} FTE
+                    </p>
+                  )}
+                  {data.gap !== undefined && (
+                    <p className={`text-xs font-medium ${data.gap > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      Gap: {data.gap > 0 ? '+' : ''}{data.gap.toLocaleString()} FTE
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         );
       }
@@ -1750,7 +1775,19 @@ function App() {
     return (
       <div className="h-96 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <defs>
+              {selectedOccupations.map(occ => [
+                <linearGradient key={`supply-gradient-${occ}`} id={`supply-gradient-${occ}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.1}/>
+                </linearGradient>,
+                <linearGradient key={`demand-gradient-${occ}`} id={`demand-gradient-${occ}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.05}/>
+                </linearGradient>
+              ]).flat()}
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis 
               dataKey="year" 
@@ -1765,33 +1802,51 @@ function App() {
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               verticalAlign="bottom" 
-              height={36}
+              height={60}
               wrapperStyle={{ paddingTop: '20px' }}
             />
             {selectedOccupations.map(occ => [
-              <Area
-                key={`${occ}_demand`}
-                type="monotone"
-                dataKey={`${occ}_demand`}
-                stackId={`${occ}_stack`}
-                stroke={colors[occ] || '#6B7280'}
-                fill={colors[occ] ? `${colors[occ]}40` : '#6B728040'}
-                name={`${occ} Demand`}
-                strokeWidth={2}
-              />,
-              <Area
+              <Line
                 key={`${occ}_supply`}
                 type="monotone"
                 dataKey={`${occ}_supply`}
-                stackId={`${occ}_stack`}
                 stroke={colors[occ] || '#6B7280'}
-                fill={colors[occ] ? `${colors[occ]}80` : '#6B728080'}
+                strokeWidth={3}
+                strokeDasharray="0"
                 name={`${occ} Supply`}
-                strokeWidth={2}
+                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+              />,
+              <Line
+                key={`${occ}_demand`}
+                type="monotone"
+                dataKey={`${occ}_demand`}
+                stroke={colors[occ] || '#6B7280'}
+                strokeWidth={3}
+                strokeDasharray="8 4"
+                name={`${occ} Demand`}
+                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4, strokeDasharray: "0" }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
               />
             ]).flat()}
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
+        
+        {/* Legend explanation */}
+        <div className="mt-4 flex justify-center">
+          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-0.5 bg-gray-600"></div>
+                <span>Solid line = Supply</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-4 h-0.5 bg-gray-600" style={{ backgroundImage: 'repeating-linear-gradient(to right, #6B7280 0, #6B7280 4px, transparent 4px, transparent 8px)' }}></div>
+                <span>Dashed line = Demand</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
