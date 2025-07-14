@@ -729,7 +729,7 @@ function App() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Analyst Dashboard</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Scenario Builder</h2>
             <p className="text-sm text-gray-600">
               Current: {activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Unknown Scenario'}
             </p>
@@ -2051,7 +2051,7 @@ function App() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Analyst View
+              Scenario Builder
             </button>
           </div>
         </div>
