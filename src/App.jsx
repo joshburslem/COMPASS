@@ -40,7 +40,6 @@ class ErrorBoundary extends React.Component {
 const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false, selectedParameterYear }) => {
   const inputRefs = React.useRef({});
   const [focusedInput, setFocusedInput] = React.useState(null);
-  const focusTimeoutRef = React.useRef(null);
 
   // Use useCallback to prevent unnecessary re-renders
   const handleInputChange = React.useCallback((paramType, year, occupation, value) => {
@@ -54,43 +53,21 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
     setFocusedInput(inputKey);
   }, []);
 
-  // Clear focus when component unmounts or parameters change significantly
-  React.useEffect(() => {
-    return () => {
-      if (focusTimeoutRef.current) {
-        clearTimeout(focusTimeoutRef.current);
-      }
-      // Clear stale refs
-      inputRefs.current = {};
-    };
-  }, [selectedParameterYear, parameterType]);
-
-  // Restore focus after re-render with improved timing and error handling
+  // Restore focus after re-render
   React.useEffect(() => {
     if (focusedInput && inputRefs.current[focusedInput]) {
-      // Clear any existing timeout
-      if (focusTimeoutRef.current) {
-        clearTimeout(focusTimeoutRef.current);
-      }
-      
       const input = inputRefs.current[focusedInput];
-      // Use requestAnimationFrame for better timing with React's render cycle
-      focusTimeoutRef.current = setTimeout(() => {
-        try {
-          if (input && document.contains(input) && input.isConnected) {
-            input.focus();
-            // Move cursor to end of input
-            const length = input.value.length;
-            input.setSelectionRange(length, length);
-          }
-        } catch (error) {
-          console.warn('Focus restoration failed:', error);
-          // Clear the focused input if focus fails
-          setFocusedInput(null);
+      // Use setTimeout to ensure the input is available in the next tick
+      setTimeout(() => {
+        if (input && document.contains(input)) {
+          input.focus();
+          // Move cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
         }
-      }, 10); // Slightly longer delay for better reliability
+      }, 0);
     }
-  }, [focusedInput]); // Remove parameters dependency to prevent excessive re-runs
+  }, [parameters, focusedInput]);
 
   return (
     <div>
@@ -141,7 +118,6 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
 const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories, selectedParameterYear }) => {
   const inputRefs = React.useRef({});
   const [focusedInput, setFocusedInput] = React.useState(null);
-  const focusTimeoutRef = React.useRef(null);
 
   // Use useCallback to prevent unnecessary re-renders
   const handleInputChange = React.useCallback((paramType, year, category, value) => {
@@ -155,43 +131,21 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
     setFocusedInput(inputKey);
   }, []);
 
-  // Clear focus when component unmounts or parameters change significantly
-  React.useEffect(() => {
-    return () => {
-      if (focusTimeoutRef.current) {
-        clearTimeout(focusTimeoutRef.current);
-      }
-      // Clear stale refs
-      inputRefs.current = {};
-    };
-  }, [selectedParameterYear, parameterType]);
-
-  // Restore focus after re-render with improved timing and error handling
+  // Restore focus after re-render
   React.useEffect(() => {
     if (focusedInput && inputRefs.current[focusedInput]) {
-      // Clear any existing timeout
-      if (focusTimeoutRef.current) {
-        clearTimeout(focusTimeoutRef.current);
-      }
-      
       const input = inputRefs.current[focusedInput];
-      // Use requestAnimationFrame for better timing with React's render cycle
-      focusTimeoutRef.current = setTimeout(() => {
-        try {
-          if (input && document.contains(input) && input.isConnected) {
-            input.focus();
-            // Move cursor to end of input
-            const length = input.value.length;
-            input.setSelectionRange(length, length);
-          }
-        } catch (error) {
-          console.warn('Focus restoration failed:', error);
-          // Clear the focused input if focus fails
-          setFocusedInput(null);
+      // Use setTimeout to ensure the input is available in the next tick
+      setTimeout(() => {
+        if (input && document.contains(input)) {
+          input.focus();
+          // Move cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
         }
-      }, 10); // Slightly longer delay for better reliability
+      }, 0);
     }
-  }, [focusedInput]); // Remove parameters dependency to prevent excessive re-runs
+  }, [parameters, focusedInput]);
 
   return (
     <div>
