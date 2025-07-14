@@ -201,8 +201,7 @@ function App() {
   const [showScenarioModal, setShowScenarioModal] = React.useState(false);
   const [importedData, setImportedData] = React.useState(null);
   const [showDataImport, setShowDataImport] = React.useState(false);
-  const [selectedOccupations, setSelectedOccupations] = React.useState(['Physicians']); // Start with single occupation
-  const [analystSelectedOccupation, setAnalystSelectedOccupation] = React.useState('Physicians'); // Separate state for Analyst View
+  const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
   const [activeParameterTab, setActiveParameterTab] = React.useState('supply');
   const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
@@ -1255,30 +1254,41 @@ function App() {
             )}
           </div>
           
-          {/* Single occupation selector for Analyst View */}
+          {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Select Occupation to View</h3>
-              <select 
-                value={analystSelectedOccupation}
-                onChange={(e) => setAnalystSelectedOccupation(e.target.value)}
-                className="border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                {workforceData.occupations.map(occ => (
-                  <option key={occ} value={occ}>{occ}</option>
-                ))}
-              </select>
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
             </div>
-            <p className="text-sm text-gray-600 mt-2">
-              Viewing single occupation to reduce visual complexity. Use the dropdown above to switch between occupations.
-            </p>
           </div>
           
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
               data={getCurrentScenarioProjections()} 
-              selectedOccupations={[analystSelectedOccupation]}
+              selectedOccupations={getFilteredOccupations()}
             />
           ) : (
             <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
@@ -1300,19 +1310,33 @@ function App() {
             )}
           </div>
           
-          {/* Single occupation selector for Supply vs Demand Analysis */}
+          {/* Add occupation filter to the Supply vs Demand Analysis chart */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Select Occupation to View</h3>
-              <select 
-                value={analystSelectedOccupation}
-                onChange={(e) => setAnalystSelectedOccupation(e.target.value)}
-                className="border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                {workforceData.occupations.map(occ => (
-                  <option key={occ} value={occ}>{occ}</option>
-                ))}
-              </select>
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
             </div>
           </div>
           
@@ -1320,7 +1344,7 @@ function App() {
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart 
               data={getCurrentScenarioProjections()} 
-              selectedOccupations={[analystSelectedOccupation]}
+              selectedOccupations={getFilteredOccupations()}
             />
           ) : (
             <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
@@ -1344,19 +1368,33 @@ function App() {
             )}
           </div>
           
-          {/* Single occupation selector for Parameter Impact Analysis */}
+          {/* Add occupation filter to the Parameter Impact Analysis chart */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Select Occupation to View</h3>
-              <select 
-                value={analystSelectedOccupation}
-                onChange={(e) => setAnalystSelectedOccupation(e.target.value)}
-                className="border border-gray-300 rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                {workforceData.occupations.map(occ => (
-                  <option key={occ} value={occ}>{occ}</option>
-                ))}
-              </select>
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
             </div>
           </div>
           
