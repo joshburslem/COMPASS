@@ -1216,7 +1216,7 @@ function App() {
       </div>
 
       {/* Visualizations */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="space-y-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold">
@@ -1337,39 +1337,39 @@ function App() {
             </div>
           )}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">Parameter Impact Analysis</h3>
-            {activeScenario === 'working' && (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                APPLIED CHANGES
-              </span>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold">Parameter Impact Analysis</h3>
+              {activeScenario === 'working' && (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                  APPLIED CHANGES
+                </span>
+              )}
+            </div>
+            
+            {/* Only render when changes are applied or scenario is loaded */}
+            {(activeScenario !== 'baseline' || !unsavedChanges) ? (
+              <ParameterImpactChart parameters={
+                activeScenario === 'baseline' 
+                  ? workforceData.baselineParameters 
+                  : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
+              } />
+            ) : (
+              <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <p className="text-gray-600 mb-2">Chart will update when changes are applied</p>
+                  <p className="text-sm text-gray-500">Make parameter adjustments and click "Apply Changes"</p>
+                </div>
+              </div>
             )}
           </div>
-          
-          {/* Only render when changes are applied or scenario is loaded */}
-          {(activeScenario !== 'baseline' || !unsavedChanges) ? (
-            <ParameterImpactChart parameters={
-              activeScenario === 'baseline' 
-                ? workforceData.baselineParameters 
-                : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-            } />
-          ) : (
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <p className="text-gray-600 mb-2">Chart will update when changes are applied</p>
-                <p className="text-sm text-gray-500">Make parameter adjustments and click "Apply Changes"</p>
-              </div>
-            </div>
-          )}
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-xl font-semibold mb-4">Population Health Segments</h3>
-          <PopulationSegmentAnalysis />
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-xl font-semibold mb-4">Population Health Segments</h3>
+            <PopulationSegmentAnalysis />
+          </div>
         </div>
       </div>
     </div>
