@@ -787,286 +787,50 @@ function App() {
     return selectedOccupations;
   };
 
-  // Add state for managing dropdown visibility
-  const [activeCalculationDropdown, setActiveCalculationDropdown] = React.useState(null);
-
-  const ExecutiveView = () => {
-    // Calculate current year gap breakdown
-    const currentYearData = executiveData.projections[selectedYear] || {};
-    const currentYearBreakdown = Object.entries(currentYearData).map(([occ, data]) => ({
-      occupation: occ,
-      supply: data.supply || 0,
-      demand: data.demand || 0,
-      gap: Math.max(0, data.gap || 0)
-    }));
-    const currentYearTotal = currentYearBreakdown.reduce((sum, item) => sum + item.gap, 0);
-
-    // Calculate 2034 gap breakdown
-    const futureYearData = executiveData.projections[2034] || {};
-    const futureYearBreakdown = Object.entries(futureYearData).map(([occ, data]) => ({
-      occupation: occ,
-      supply: data.supply || 0,
-      demand: data.demand || 0,
-      gap: Math.max(0, data.gap || 0)
-    }));
-    const futureYearTotal = futureYearBreakdown.reduce((sum, item) => sum + item.gap, 0);
-
-    // Calculate population growth breakdown
-    const populationGrowthBreakdown = [
-      { ageGroup: '0-18', growth: 1.8, contribution: 0.3 },
-      { ageGroup: '19-64', growth: 2.1, contribution: 3.8 },
-      { ageGroup: '65-84', growth: 3.2, contribution: 6.1 },
-      { ageGroup: '85+', growth: 4.5, contribution: 2.1 }
-    ];
-
-    // Calculate chronic conditions breakdown
-    const chronicConditionsBreakdown = [
-      { condition: 'Diabetes', current: 8.2, projected: 9.8, change: 1.6 },
-      { condition: 'Hypertension', current: 22.1, projected: 26.3, change: 4.2 },
-      { condition: 'Heart Disease', current: 6.5, projected: 7.9, change: 1.4 },
-      { condition: 'Mental Health', current: 18.7, projected: 22.1, change: 3.4 },
-      { condition: 'Other Chronic', current: 11.2, projected: 13.7, change: 2.5 }
-    ];
-
-    const CalculationDropdown = ({ type, data, isVisible, onClose }) => {
-      if (!isVisible) return null;
-
-      return (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="font-semibold text-gray-800">Calculation Breakdown</h4>
-            <button 
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+  const ExecutiveView = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Executive Dashboard</h2>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-600">Viewing baseline projections</p>
+          <div className="text-sm">
+            {isUsingUploadedData ? (
+              <span className="text-green-600 font-medium">📊 Using Your Uploaded Data</span>
+            ) : (
+              <span className="text-orange-600 font-medium">⚠️ Using Sample Data - Import your baseline projections for accurate results</span>
+            )}
           </div>
-
-          {type === 'currentGap' && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-3">
-                Current year workforce gap is calculated as: <strong>Demand - Supply</strong> for each occupation
-              </p>
-              <div className="space-y-2">
-                {data.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700">{item.occupation}</span>
-                    <div className="text-right">
-                      <div className="text-gray-600">
-                        {item.demand.toLocaleString()} - {item.supply.toLocaleString()} = <span className="font-semibold text-blue-600">{item.gap.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t pt-2 mt-3">
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Total Gap:</span>
-                  <span className="text-blue-600">{data.reduce((sum, item) => sum + item.gap, 0).toLocaleString()} FTE</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {type === 'futureGap' && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-3">
-                2034 projected gap accounts for: <strong>Population growth + Health status changes + Retirement/Attrition - New graduates/Migrants</strong>
-              </p>
-              <div className="space-y-2">
-                {data.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700">{item.occupation}</span>
-                    <div className="text-right">
-                      <div className="text-gray-600">
-                        {item.demand.toLocaleString()} - {item.supply.toLocaleString()} = <span className="font-semibold text-red-600">{item.gap.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t pt-2 mt-3">
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Total 2034 Gap:</span>
-                  <span className="text-red-600">{data.reduce((sum, item) => sum + item.gap, 0).toLocaleString()} FTE</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {type === 'populationGrowth' && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-3">
-                Population growth is calculated by age group using: <strong>((Future Population - Current Population) / Current Population) × 100</strong>
-              </p>
-              <div className="space-y-2">
-                {data.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700">Age {item.ageGroup}</span>
-                    <div className="text-right">
-                      <div className="text-green-600 font-medium">+{item.growth.toFixed(1)}%</div>
-                      <div className="text-xs text-gray-500">Contributes {item.contribution.toFixed(1)}% to total</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t pt-2 mt-3">
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Overall Growth:</span>
-                  <span className="text-green-600">+12.3% by 2034</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Older populations drive higher healthcare demand
-                </p>
-              </div>
-            </div>
-          )}
-
-          {type === 'chronicConditions' && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-3">
-                Chronic condition prevalence is projected using: <strong>Age-specific rates × Population projections × Epidemiological trends</strong>
-              </p>
-              <div className="space-y-2">
-                {data.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700">{item.condition}</span>
-                    <div className="text-right">
-                      <div className="text-gray-600">
-                        {item.current.toFixed(1)}% → {item.projected.toFixed(1)}%
-                      </div>
-                      <div className="text-orange-600 font-medium">+{item.change.toFixed(1)}pp</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t pt-2 mt-3">
-                <div className="flex justify-between items-center font-semibold">
-                  <span>Overall Increase:</span>
-                  <span className="text-orange-600">23% → 28% (+5pp)</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Aging population drives increased chronic disease burden
-                </p>
-              </div>
-            </div>
-          )}
         </div>
-      );
-    };
 
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Executive Dashboard</h2>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-600">Viewing baseline projections</p>
-            <div className="text-sm">
-              {isUsingUploadedData ? (
-                <span className="text-green-600 font-medium">📊 Using Your Uploaded Data</span>
-              ) : (
-                <span className="text-orange-600 font-medium">⚠️ Using Sample Data - Import your baseline projections for accurate results</span>
-              )}
-            </div>
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-blue-800">Current Year Gap</h3>
+            <p className="text-3xl font-bold text-blue-600">
+              {Object.values(executiveData.projections[selectedYear] || {})
+                .reduce((sum, occ) => sum + Math.max(0, occ.gap), 0)}
+            </p>
+            <p className="text-sm text-blue-600">FTE positions ({selectedYear})</p>
           </div>
-
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="relative">
-              <div 
-                className="bg-blue-50 p-4 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
-                onClick={() => setActiveCalculationDropdown(activeCalculationDropdown === 'currentGap' ? null : 'currentGap')}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-blue-800">Current Year Gap</h3>
-                  <svg className={`w-4 h-4 text-blue-600 transition-transform ${activeCalculationDropdown === 'currentGap' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                <p className="text-3xl font-bold text-blue-600">
-                  {currentYearTotal.toLocaleString()}
-                </p>
-                <p className="text-sm text-blue-600">FTE positions ({selectedYear})</p>
-              </div>
-              <CalculationDropdown 
-                type="currentGap" 
-                data={currentYearBreakdown}
-                isVisible={activeCalculationDropdown === 'currentGap'}
-                onClose={() => setActiveCalculationDropdown(null)}
-              />
-            </div>
-
-            <div className="relative">
-              <div 
-                className="bg-red-50 p-4 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
-                onClick={() => setActiveCalculationDropdown(activeCalculationDropdown === 'futureGap' ? null : 'futureGap')}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-red-800">2034 Projected Gap</h3>
-                  <svg className={`w-4 h-4 text-red-600 transition-transform ${activeCalculationDropdown === 'futureGap' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                <p className="text-3xl font-bold text-red-600">
-                  {futureYearTotal.toLocaleString()}
-                </p>
-                <p className="text-sm text-red-600">FTE positions (2034)</p>
-              </div>
-              <CalculationDropdown 
-                type="futureGap" 
-                data={futureYearBreakdown}
-                isVisible={activeCalculationDropdown === 'futureGap'}
-                onClose={() => setActiveCalculationDropdown(null)}
-              />
-            </div>
-
-            <div className="relative">
-              <div 
-                className="bg-green-50 p-4 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
-                onClick={() => setActiveCalculationDropdown(activeCalculationDropdown === 'populationGrowth' ? null : 'populationGrowth')}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-green-800">Population Growth</h3>
-                  <svg className={`w-4 h-4 text-green-600 transition-transform ${activeCalculationDropdown === 'populationGrowth' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                <p className="text-3xl font-bold text-green-600">+12.3%</p>
-                <p className="text-sm text-green-600">Expected by 2034</p>
-              </div>
-              <CalculationDropdown 
-                type="populationGrowth" 
-                data={populationGrowthBreakdown}
-                isVisible={activeCalculationDropdown === 'populationGrowth'}
-                onClose={() => setActiveCalculationDropdown(null)}
-              />
-            </div>
-
-            <div className="relative">
-              <div 
-                className="bg-orange-50 p-4 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors"
-                onClick={() => setActiveCalculationDropdown(activeCalculationDropdown === 'chronicConditions' ? null : 'chronicConditions')}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-orange-800">Chronic Conditions</h3>
-                  <svg className={`w-4 h-4 text-orange-600 transition-transform ${activeCalculationDropdown === 'chronicConditions' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                <p className="text-3xl font-bold text-orange-600">23% → 28%</p>
-                <p className="text-sm text-orange-600">Projected increase</p>
-              </div>
-              <CalculationDropdown 
-                type="chronicConditions" 
-                data={chronicConditionsBreakdown}
-                isVisible={activeCalculationDropdown === 'chronicConditions'}
-                onClose={() => setActiveCalculationDropdown(null)}
-              />
-            </div>
+          <div className="bg-red-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-red-800">2034 Projected Gap</h3>
+            <p className="text-3xl font-bold text-red-600">
+              {Object.values(executiveData.projections[2034] || {})
+                .reduce((sum, occ) => sum + Math.max(0, occ.gap), 0)}
+            </p>
+            <p className="text-sm text-red-600">FTE positions (2034)</p>
           </div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-green-800">Population Growth</h3>
+            <p className="text-3xl font-bold text-green-600">+12.3%</p>
+            <p className="text-sm text-green-600">Expected by 2034</p>
+          </div>
+          <div className="bg-orange-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-orange-800">Chronic Conditions</h3>
+            <p className="text-3xl font-bold text-orange-600">23% → 28%</p>
+            <p className="text-sm text-orange-600">Projected increase</p>
+          </div>
+        </div>
 
         {/* Occupation Filter */}
         <div className="mb-6">
