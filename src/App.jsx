@@ -942,24 +942,6 @@ function App() {
 
 
 
-        {/* Year Selector */}
-        <div className="mb-6">
-          <div className="flex items-center justify-end">
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">Editing Year:</label>
-              <select 
-                value={selectedParameterYear} 
-                onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
         {/* Parameter Tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
