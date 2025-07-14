@@ -766,7 +766,18 @@ function App() {
   };
 
   const toggleOccupation = (occupation) => {
-    setSelectedOccupations([occupation]);
+    if (occupation === 'All') {
+      setSelectedOccupations(['All']);
+    } else {
+      if (selectedOccupations.includes('All')) {
+        setSelectedOccupations([occupation]);
+      } else if (selectedOccupations.includes(occupation)) {
+        const filtered = selectedOccupations.filter(o => o !== occupation);
+        setSelectedOccupations(filtered.length === 0 ? ['All'] : filtered);
+      } else {
+        setSelectedOccupations([...selectedOccupations, occupation]);
+      }
+    }
   };
 
   const getFilteredOccupations = () => {
@@ -823,18 +834,31 @@ function App() {
 
         {/* Occupation Filter */}
         <div className="mb-6">
-          <div className="flex items-center space-x-3">
-            <h3 className="text-lg font-semibold">View Occupation:</h3>
-            <select 
-              value={selectedOccupations[0]} 
-              onChange={(e) => toggleOccupation(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => toggleOccupation('All')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedOccupations.includes('All')
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
             >
-              <option value="All">All Occupations</option>
-              {workforceData.occupations.map(occ => (
-                <option key={occ} value={occ}>{occ}</option>
-              ))}
-            </select>
+              All Occupations
+            </button>
+            {workforceData.occupations.map(occ => (
+              <button
+                key={occ}
+                onClick={() => toggleOccupation(occ)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {occ}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1231,19 +1255,32 @@ function App() {
           </div>
           
           {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">View Occupation:</label>
-              <select 
-                value={selectedOccupations[0]} 
-                onChange={(e) => toggleOccupation(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                <option value="All">All Occupations</option>
-                {workforceData.occupations.map(occ => (
-                  <option key={occ} value={occ}>{occ}</option>
-                ))}
-              </select>
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
             </div>
           </div>
           
@@ -1274,19 +1311,32 @@ function App() {
           </div>
           
           {/* Add occupation filter to the Supply vs Demand Analysis chart */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">View Occupation:</label>
-              <select 
-                value={selectedOccupations[0]} 
-                onChange={(e) => toggleOccupation(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                <option value="All">All Occupations</option>
-                {workforceData.occupations.map(occ => (
-                  <option key={occ} value={occ}>{occ}</option>
-                ))}
-              </select>
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
             </div>
           </div>
           
@@ -1319,19 +1369,32 @@ function App() {
           </div>
           
           {/* Add occupation filter to the Parameter Impact Analysis chart */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">View Occupation:</label>
-              <select 
-                value={selectedOccupations[0]} 
-                onChange={(e) => toggleOccupation(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                <option value="All">All Occupations</option>
-                {workforceData.occupations.map(occ => (
-                  <option key={occ} value={occ}>{occ}</option>
-                ))}
-              </select>
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
             </div>
           </div>
           
