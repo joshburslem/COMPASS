@@ -2127,15 +2127,122 @@ function App() {
     const [selectedFile, setSelectedFile] = React.useState(null);
     const [dataType, setDataType] = React.useState('baseline');
     const [isProcessing, setIsProcessing] = React.useState(false);
+    const [showPreview, setShowPreview] = React.useState(false);
+    const [previewData, setPreviewData] = React.useState(null);
+    const [isLoadingPreview, setIsLoadingPreview] = React.useState(false);
 
     const handleFileSelect = (e) => {
       const file = e.target.files[0];
       if (file && file.name.endsWith('.csv')) {
         setSelectedFile(file);
         setUploadStatus(null);
+        setShowPreview(false);
+        setPreviewData(null);
       } else {
         setUploadStatus({ type: 'error', message: 'Please select a CSV file' });
         setSelectedFile(null);
+        setShowPreview(false);
+        setPreviewData(null);
+      }
+    };
+
+    const handlePreviewData = async () => {
+      if (!selectedFile) {
+        setUploadStatus({ type: 'error', message: 'Please select a file first' });
+        return;
+      }
+
+      setIsLoadingPreview(true);
+      setUploadStatus({ type: 'info', message: 'Loading preview...' });
+
+      try {
+        const fileContent = await selectedFile.text();
+        const csvData = parseCSV(fileContent);
+        
+        // Validate required columns
+        const requiredColumns = ['Year', 'Gender', 'Age_Group', 'Projected_Population'];
+        const actualColumns = csvData.length > 0 ? Object.keys(csvData[0]) : [];
+        const hasRequiredColumns = requiredColumns.every(col => actualColumns.includes(col));
+
+        if (!hasRequiredColumns) {
+          throw new Error(`CSV must contain columns: ${requiredColumns.join(', ')}`);
+        }
+
+        // Process data for preview
+        const years = [...new Set(csvData.map(row => parseInt(row.Year)))].sort();
+        const genders = [...new Set(csvData.map(row => row.Gender))];
+        const ageGroups = [...new Set(csvData.map(row => row.Age_Group))];
+        
+        // Calculate summary statistics
+        const totalRecords = csvData.length;
+        const yearRange = { min: Math.min(...years), max: Math.max(...years) };
+        
+        // Sample population data by year
+        const populationByYear = {};
+        years.forEach(year => {
+          const yearData = csvData.filter(row => parseInt(row.Year) === year);
+          const totalPop = yearData.reduce((sum, row) => sum + parseFloat(row.Projected_Population), 0);
+          populationByYear[year] = totalPop;
+        });
+
+        // Calculate growth rates
+        const growthRates = {};
+        years.slice(1).forEach(year => {
+          const currentPop = populationByYear[year];
+          const previousPop = populationByYear[year - 1];
+          if (previousPop > 0) {
+            growthRates[year] = ((currentPop - previousPop) / previousPop * 100).toFixed(2);
+          }
+        });
+
+        // Age group distribution for latest year
+        const latestYear = Math.max(...years);
+        const latestYearData = csvData.filter(row => parseInt(row.Year) === latestYear);
+        const ageGroupDistribution = {};
+        ageGroups.forEach(ageGroup => {
+          const ageData = latestYearData.filter(row => row.Age_Group === ageGroup);
+          const totalPop = ageData.reduce((sum, row) => sum + parseFloat(row.Projected_Population), 0);
+          ageGroupDistribution[ageGroup] = {
+            population: totalPop,
+            percentage: ((totalPop / populationByYear[latestYear]) * 100).toFixed(1)
+          };
+        });
+
+        // Sample records for display
+        const sampleRecords = csvData.slice(0, 10);
+
+        setPreviewData({
+          summary: {
+            totalRecords,
+            yearRange,
+            years: years.length,
+            genders,
+            ageGroups,
+            columns: actualColumns
+          },
+          populationByYear,
+          growthRates,
+          ageGroupDistribution,
+          latestYear,
+          sampleRecords,
+          validationStatus: {
+            hasRequiredColumns,
+            missingColumns: requiredColumns.filter(col => !actualColumns.includes(col)),
+            extraColumns: actualColumns.filter(col => !requiredColumns.includes(col))
+          }
+        });
+
+        setShowPreview(true);
+        setUploadStatus({ type: 'success', message: 'Data preview loaded successfully' });
+
+      } catch (error) {
+        console.error('Preview error:', error);
+        setUploadStatus({ 
+          type: 'error', 
+          message: `Preview failed: ${error.message}` 
+        });
+      } finally {
+        setIsLoadingPreview(false);
       }
     };
 
@@ -2239,11 +2346,13 @@ function App() {
       setDataType('baseline');
       setIsProcessing(false);
       setUploadStatus(null);
+      setShowPreview(false);
+      setPreviewData(null);
     };
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-[500px] max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-lg p-6 w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto">
           <h3 className="text-lg font-semibold mb-4">Import Baseline Data</h3>
           
           {/* Status Messages */}
@@ -2317,18 +2426,172 @@ function App() {
               <button 
                 onClick={handleClose}
                 className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 disabled:opacity-50"
-                disabled={isProcessing}
+                disabled={isProcessing || isLoadingPreview}
               >
                 Cancel
               </button>
               <button 
-                onClick={handleImport}
-                disabled={!selectedFile || isProcessing}
+                onClick={handlePreviewData}
+                disabled={!selectedFile || isProcessing || isLoadingPreview}
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoadingPreview ? 'Loading Preview...' : 'Preview Data'}
+              </button>
+              <button 
+                onClick={handleImport}
+                disabled={!selectedFile || isProcessing || !showPreview}
+                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? 'Processing...' : 'Import Data'}
               </button>
             </div>
+
+            {/* Data Preview Section */}
+            {showPreview && previewData && (
+              <div className="mt-6 border-t pt-6">
+                <h4 className="text-lg font-semibold mb-4 text-gray-800">Data Preview</h4>
+                
+                {/* Summary Statistics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h5 className="font-semibold text-blue-800">Total Records</h5>
+                    <p className="text-2xl font-bold text-blue-600">{previewData.summary.totalRecords}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h5 className="font-semibold text-green-800">Year Range</h5>
+                    <p className="text-lg font-bold text-green-600">
+                      {previewData.summary.yearRange.min} - {previewData.summary.yearRange.max}
+                    </p>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h5 className="font-semibold text-purple-800">Age Groups</h5>
+                    <p className="text-lg font-bold text-purple-600">{previewData.summary.ageGroups.length}</p>
+                    <p className="text-xs text-purple-600">{previewData.summary.ageGroups.join(', ')}</p>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <h5 className="font-semibold text-orange-800">Genders</h5>
+                    <p className="text-lg font-bold text-orange-600">{previewData.summary.genders.length}</p>
+                    <p className="text-xs text-orange-600">{previewData.summary.genders.join(', ')}</p>
+                  </div>
+                </div>
+
+                {/* Validation Status */}
+                <div className={`mb-4 p-3 rounded-lg ${
+                  previewData.validationStatus.hasRequiredColumns 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <h5 className={`font-medium mb-2 ${
+                    previewData.validationStatus.hasRequiredColumns ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    Data Validation
+                  </h5>
+                  {previewData.validationStatus.hasRequiredColumns ? (
+                    <p className="text-sm text-green-700">✓ All required columns are present</p>
+                  ) : (
+                    <div className="text-sm text-red-700">
+                      <p>✗ Missing required columns: {previewData.validationStatus.missingColumns.join(', ')}</p>
+                    </div>
+                  )}
+                  {previewData.validationStatus.extraColumns.length > 0 && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      Extra columns (will be ignored): {previewData.validationStatus.extraColumns.join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Population Growth Trends */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h5 className="font-medium text-gray-800 mb-3">Population Growth Trends</h5>
+                    <div className="space-y-2">
+                      {Object.entries(previewData.growthRates).slice(0, 5).map(([year, rate]) => (
+                        <div key={year} className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">{year}:</span>
+                          <span className={`text-sm font-medium ${
+                            parseFloat(rate) > 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {parseFloat(rate) > 0 ? '+' : ''}{rate}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Age Group Distribution */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h5 className="font-medium text-gray-800 mb-3">
+                      Age Distribution ({previewData.latestYear})
+                    </h5>
+                    <div className="space-y-2">
+                      {Object.entries(previewData.ageGroupDistribution).map(([ageGroup, data]) => (
+                        <div key={ageGroup} className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">{ageGroup}:</span>
+                          <div className="text-right">
+                            <span className="text-sm font-medium">{data.percentage}%</span>
+                            <p className="text-xs text-gray-500">{data.population.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Population by Year */}
+                <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+                  <h5 className="font-medium text-gray-800 mb-3">Total Population by Year</h5>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
+                    {Object.entries(previewData.populationByYear).map(([year, population]) => (
+                      <div key={year} className="text-center">
+                        <div className="font-medium text-gray-800">{year}</div>
+                        <div className="text-gray-600">{population.toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sample Data Table */}
+                <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+                  <h5 className="font-medium text-gray-800 mb-3">Sample Data (First 10 Records)</h5>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-xs">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          {previewData.summary.columns.map(col => (
+                            <th key={col} className="px-2 py-1 text-left font-medium text-gray-700">
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData.sampleRecords.map((record, index) => (
+                          <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            {previewData.summary.columns.map(col => (
+                              <td key={col} className="px-2 py-1 text-gray-600">
+                                {record[col]}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Impact Summary */}
+                <div className="mt-4 bg-blue-50 p-4 rounded-lg">
+                  <h5 className="font-medium text-blue-800 mb-2">Import Impact</h5>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Population growth rates will be calculated from your projections</li>
+                    <li>• Workforce parameters will be derived using population-based ratios</li>
+                    <li>• Health status and service utilization will be adjusted accordingly</li>
+                    <li>• Current baseline and all scenarios will be replaced</li>
+                    <li>• New calculations will use your demographic projections</li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
