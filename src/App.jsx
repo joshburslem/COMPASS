@@ -36,6 +36,163 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Extract parameter grid components outside App to prevent recreation
+const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false, selectedParameterYear }) => {
+  const inputRefs = React.useRef({});
+  const [focusedInput, setFocusedInput] = React.useState(null);
+
+  // Use useCallback to prevent unnecessary re-renders
+  const handleInputChange = React.useCallback((paramType, year, occupation, value) => {
+    const inputKey = `${paramType}-${year}-${occupation}`;
+    setFocusedInput(inputKey);
+    onUpdate(paramType, year, occupation, value);
+  }, [onUpdate]);
+
+  const handleInputFocus = React.useCallback((paramType, year, occupation) => {
+    const inputKey = `${paramType}-${year}-${occupation}`;
+    setFocusedInput(inputKey);
+  }, []);
+
+  // Restore focus after re-render
+  React.useEffect(() => {
+    if (focusedInput && inputRefs.current[focusedInput]) {
+      const input = inputRefs.current[focusedInput];
+      // Use setTimeout to ensure the input is available in the next tick
+      setTimeout(() => {
+        if (input && document.contains(input)) {
+          input.focus();
+          // Move cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
+        }
+      }, 0);
+    }
+  }, [parameters, focusedInput]);
+
+  return (
+    <div>
+      <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
+      <div className="bg-white border rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {occupations.map(occ => {
+            const baseline = baselineParameters[selectedParameterYear][occ];
+            const current = parameters[selectedParameterYear][occ];
+            const change = ((current - baseline) / baseline * 100).toFixed(1);
+            const inputKey = `${parameterType}-${selectedParameterYear}-${occ}`;
+
+            return (
+              <div key={occ} className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{occ}</label>
+                <div className="space-y-1">
+                  <input
+                    ref={(el) => {
+                      if (el) {
+                        inputRefs.current[inputKey] = el;
+                      }
+                    }}
+                    type="number"
+                    step={isPercentage ? "0.01" : "1"}
+                    value={current}
+                    onChange={(e) => handleInputChange(parameterType, selectedParameterYear, occ, e.target.value)}
+                    onFocus={() => handleInputFocus(parameterType, selectedParameterYear, occ)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500">
+                      Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
+                    </span>
+                    <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories, selectedParameterYear }) => {
+  const inputRefs = React.useRef({});
+  const [focusedInput, setFocusedInput] = React.useState(null);
+
+  // Use useCallback to prevent unnecessary re-renders
+  const handleInputChange = React.useCallback((paramType, year, category, value) => {
+    const inputKey = `${paramType}-${year}-${category}`;
+    setFocusedInput(inputKey);
+    onUpdate(paramType, year, category, value);
+  }, [onUpdate]);
+
+  const handleInputFocus = React.useCallback((paramType, year, category) => {
+    const inputKey = `${paramType}-${year}-${category}`;
+    setFocusedInput(inputKey);
+  }, []);
+
+  // Restore focus after re-render
+  React.useEffect(() => {
+    if (focusedInput && inputRefs.current[focusedInput]) {
+      const input = inputRefs.current[focusedInput];
+      // Use setTimeout to ensure the input is available in the next tick
+      setTimeout(() => {
+        if (input && document.contains(input)) {
+          input.focus();
+          // Move cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
+        }
+      }, 0);
+    }
+  }, [parameters, focusedInput]);
+
+  return (
+    <div>
+      <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
+      <div className="bg-white border rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {categories.map(cat => {
+            const baseline = baselineParameters[selectedParameterYear][cat];
+            const current = parameters[selectedParameterYear][cat];
+            const change = ((current - baseline) / baseline * 100).toFixed(1);
+            const inputKey = `${parameterType}-${selectedParameterYear}-${cat}`;
+
+            return (
+              <div key={cat} className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{cat}</label>
+                <div className="space-y-1">
+                  <input
+                    ref={(el) => {
+                      if (el) {
+                        inputRefs.current[inputKey] = el;
+                      }
+                    }}
+                    type="number"
+                    step="0.001"
+                    value={current}
+                    onChange={(e) => handleInputChange(parameterType, selectedParameterYear, cat, e.target.value)}
+                    onFocus={() => handleInputFocus(parameterType, selectedParameterYear, cat)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500">
+                      Baseline: {(baseline * 100).toFixed(1)}%
+                    </span>
+                    <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+});
+
 function App() {
   const [currentView, setCurrentView] = React.useState('executive');
   const [selectedYear, setSelectedYear] = React.useState(2024);
@@ -645,6 +802,7 @@ function App() {
               baselineParameters={workforceData.baselineParameters.supply}
               onUpdate={updateParameter}
               occupations={workforceData.occupations}
+              selectedParameterYear={selectedParameterYear}
             />
           )}
 
@@ -657,6 +815,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.educationalInflow}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
+                selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
                 title="International Migrants (Annual)"
@@ -665,6 +824,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.internationalMigrants}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
+                selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
                 title="Domestic Migrants (Annual)"
@@ -673,6 +833,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.domesticMigrants}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
+                selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
                 title="Re-Entrants (Annual)"
@@ -681,6 +842,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.reEntrants}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
+                selectedParameterYear={selectedParameterYear}
               />
             </div>
           )}
@@ -695,6 +857,7 @@ function App() {
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 isPercentage={true}
+                selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
                 title="Attrition Rate (%)"
@@ -704,6 +867,7 @@ function App() {
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 isPercentage={true}
+                selectedParameterYear={selectedParameterYear}
               />
             </div>
           )}
@@ -717,6 +881,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.populationGrowth}
                 onUpdate={updateParameter}
                 categories={['0-18', '19-64', '65-84', '85+']}
+                selectedParameterYear={selectedParameterYear}
               />
               <DemandParameterGrid 
                 title="Health Status Change (% per year)"
@@ -725,6 +890,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.healthStatusChange}
                 onUpdate={updateParameter}
                 categories={['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']}
+                selectedParameterYear={selectedParameterYear}
               />
               <DemandParameterGrid 
                 title="Service Utilization Change (% per year)"
@@ -733,6 +899,7 @@ function App() {
                 baselineParameters={workforceData.baselineParameters.serviceUtilization}
                 onUpdate={updateParameter}
                 categories={['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services']}
+                selectedParameterYear={selectedParameterYear}
               />
             </div>
           )}
@@ -854,161 +1021,7 @@ function App() {
     </div>
   );
 
-  const ParameterGridWithBaseline = ({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false }) => {
-    const inputRefs = React.useRef({});
-    const [focusedInput, setFocusedInput] = React.useState(null);
-
-    // Use useCallback to prevent unnecessary re-renders
-    const handleInputChange = React.useCallback((paramType, year, occupation, value) => {
-      const inputKey = `${paramType}-${year}-${occupation}`;
-      setFocusedInput(inputKey);
-      onUpdate(paramType, year, occupation, value);
-    }, [onUpdate]);
-
-    const handleInputFocus = React.useCallback((paramType, year, occupation) => {
-      const inputKey = `${paramType}-${year}-${occupation}`;
-      setFocusedInput(inputKey);
-    }, []);
-
-    // Restore focus after re-render
-    React.useEffect(() => {
-      if (focusedInput && inputRefs.current[focusedInput]) {
-        const input = inputRefs.current[focusedInput];
-        // Use setTimeout to ensure the input is available in the next tick
-        setTimeout(() => {
-          if (input && document.contains(input)) {
-            input.focus();
-            // Move cursor to end of input
-            const length = input.value.length;
-            input.setSelectionRange(length, length);
-          }
-        }, 0);
-      }
-    }, [parameters, focusedInput]);
-
-    return (
-      <div>
-        <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {occupations.map(occ => {
-              const baseline = baselineParameters[selectedParameterYear][occ];
-              const current = parameters[selectedParameterYear][occ];
-              const change = ((current - baseline) / baseline * 100).toFixed(1);
-              const inputKey = `${parameterType}-${selectedParameterYear}-${occ}`;
-
-              return (
-                <div key={occ} className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">{occ}</label>
-                  <div className="space-y-1">
-                    <input
-                      ref={(el) => {
-                        if (el) {
-                          inputRefs.current[inputKey] = el;
-                        }
-                      }}
-                      type="number"
-                      step={isPercentage ? "0.01" : "1"}
-                      value={current}
-                      onChange={(e) => handleInputChange(parameterType, selectedParameterYear, occ, e.target.value)}
-                      onFocus={() => handleInputFocus(parameterType, selectedParameterYear, occ)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">
-                        Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
-                      </span>
-                      <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const DemandParameterGrid = ({ title, parameterType, parameters, baselineParameters, onUpdate, categories }) => {
-    const inputRefs = React.useRef({});
-    const [focusedInput, setFocusedInput] = React.useState(null);
-
-    // Use useCallback to prevent unnecessary re-renders
-    const handleInputChange = React.useCallback((paramType, year, category, value) => {
-      const inputKey = `${paramType}-${year}-${category}`;
-      setFocusedInput(inputKey);
-      onUpdate(paramType, year, category, value);
-    }, [onUpdate]);
-
-    const handleInputFocus = React.useCallback((paramType, year, category) => {
-      const inputKey = `${paramType}-${year}-${category}`;
-      setFocusedInput(inputKey);
-    }, []);
-
-    // Restore focus after re-render
-    React.useEffect(() => {
-      if (focusedInput && inputRefs.current[focusedInput]) {
-        const input = inputRefs.current[focusedInput];
-        // Use setTimeout to ensure the input is available in the next tick
-        setTimeout(() => {
-          if (input && document.contains(input)) {
-            input.focus();
-            // Move cursor to end of input
-            const length = input.value.length;
-            input.setSelectionRange(length, length);
-          }
-        }, 0);
-      }
-    }, [parameters, focusedInput]);
-
-    return (
-      <div>
-        <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {categories.map(cat => {
-              const baseline = baselineParameters[selectedParameterYear][cat];
-              const current = parameters[selectedParameterYear][cat];
-              const change = ((current - baseline) / baseline * 100).toFixed(1);
-              const inputKey = `${parameterType}-${selectedParameterYear}-${cat}`;
-
-              return (
-                <div key={cat} className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">{cat}</label>
-                  <div className="space-y-1">
-                    <input
-                      ref={(el) => {
-                        if (el) {
-                          inputRefs.current[inputKey] = el;
-                        }
-                      }}
-                      type="number"
-                      step="0.001"
-                      value={current}
-                      onChange={(e) => handleInputChange(parameterType, selectedParameterYear, cat, e.target.value)}
-                      onFocus={() => handleInputFocus(parameterType, selectedParameterYear, cat)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500">
-                        Baseline: {(baseline * 100).toFixed(1)}%
-                      </span>
-                      <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  
 
   const exportScenarioToExcel = React.useCallback((scenarioId) => {
     try {
