@@ -60,13 +60,10 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
       // Use setTimeout to ensure the input is available in the next tick
       setTimeout(() => {
         if (input && document.contains(input)) {
-          try {
-            input.focus();
-            // Just focus without selecting text
-          } catch (error) {
-            // Silently handle any focus/selection errors
-            console.debug('Focus restoration error:', error);
-          }
+          input.focus();
+          // Move cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
         }
       }, 0);
     }
@@ -141,13 +138,10 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
       // Use setTimeout to ensure the input is available in the next tick
       setTimeout(() => {
         if (input && document.contains(input)) {
-          try {
-            input.focus();
-            // Just focus without selecting text
-          } catch (error) {
-            // Silently handle any focus/selection errors
-            console.debug('Focus restoration error:', error);
-          }
+          input.focus();
+          // Move cursor to end of input
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
         }
       }, 0);
     }
@@ -204,7 +198,7 @@ function App() {
   const [selectedYear, setSelectedYear] = React.useState(2024);
   const [scenarios, setScenarios] = React.useState([]);
   const [activeScenario, setActiveScenario] = React.useState('baseline');
-  const [showScenarioModal, setShowScenarioModal] = React.useState(showScenarioModal);
+  const [showScenarioModal, setShowScenarioModal] = React.useState(false);
   const [importedData, setImportedData] = React.useState(null);
   const [showDataImport, setShowDataImport] = React.useState(false);
   const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
@@ -254,7 +248,7 @@ function App() {
     const lines = csvText.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
     const data = [];
-
+    
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim());
       const row = {};
@@ -263,7 +257,7 @@ function App() {
       });
       data.push(row);
     }
-
+    
     return data;
   };
 
@@ -788,7 +782,7 @@ function App() {
 
   const getFilteredOccupations = () => {
     if (selectedOccupations.includes('All')) {
-            return workforceData.occupations;
+      return workforceData.occupations;
     }
     return selectedOccupations;
   };
@@ -1241,7 +1235,7 @@ function App() {
               </span>
             )}
           </div>
-
+          
           {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1271,7 +1265,7 @@ function App() {
               ))}
             </div>
           </div>
-
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
@@ -1297,7 +1291,7 @@ function App() {
               </span>
             )}
           </div>
-
+          
           {/* Add occupation filter to the Supply vs Demand Analysis chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1327,7 +1321,7 @@ function App() {
               ))}
             </div>
           </div>
-
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart 
@@ -1354,7 +1348,7 @@ function App() {
                 </span>
               )}
             </div>
-
+            
             {/* Only render when changes are applied or scenario is loaded */}
             {(activeScenario !== 'baseline' || !unsavedChanges) ? (
               <ParameterImpactChart parameters={
@@ -1531,140 +1525,121 @@ function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
-            
-              
+            <select 
+              value={activeScenario}
               onChange={(e) => onSelectScenario(e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2"
-            
-              
-                Baseline
-              
+            >
+              <option value="baseline">Baseline</option>
               {scenarios.map(scenario => (
-                
-                  {scenario.name}
-                
+                <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
               ))}
-            
+            </select>
           </div>
-          
-            
-              
+          <div className="flex items-end space-x-2">
+            <button 
+              onClick={onCreateScenario}
               className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700"
-            
+            >
               {activeScenario === 'working' ? 'Save as New Scenario' : 'Create New Scenario'}
-            
-            
-              
-                
-                  Export to Excel
-                
-                
-                  
-                    
-                      
-                      
-                    
-                    
-                      
-                        
-                          Export Information
-                          
-                            
-                              
-                                
-                              
-                            
-                          
-                        
-                        
-                          Excel exports include comprehensive data for the active scenario:
-                        
-                        
-                          
-                            
-                              • Summary statistics and projections for all years (2024-2034)
-                            
-                            
-                              • Detailed workforce supply, demand, and gap data by occupation
-                            
-                            
-                              • All parameter values (supply, inflows, outflows, demand drivers)
-                            
-                            
-                              • Population growth and health status change assumptions
-                            
-                            
-                              • Service utilization parameters
-                            
-                          
-                          
-                            
-                              
-                            
-                          
-                        
-                      
-                    
-                  
-                
-              
-            
-          
-        
+            </button>
+            <div className="flex-1 flex items-center space-x-2">
+              <button 
+                onClick={() => exportScenarioToExcel(activeScenario)}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+              >
+                Export to Excel
+              </button>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowExportInfo(!showExportInfo)}
+                  className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Export information"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
 
-      
-        
-          
-            
-              
-                Working Changes:
-                 You have applied parameter changes that are now visible in the visualizations. 
-                Click "Save as New Scenario" above to permanently save these changes, or load a different scenario to discard them.
-              
-            
-          
-        
+                {showExportInfo && (
+                  <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h5 className="font-medium text-gray-800">Export Information</h5>
+                      <button 
+                        onClick={() => setShowExportInfo(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-3">
+                      Excel exports include comprehensive data for the active scenario:
+                    </p>
+                    <ul className="text-xs text-gray-600 space-y-1 mb-3">
+                      <li>• Summary statistics and projections for all years (2024-2034)</li>
+                      <li>• Detailed workforce supply, demand, and gap data by occupation</li>
+                      <li>• All parameter values (supply, inflows, outflows, demand drivers)</li>
+                      <li>• Population growth and health status change assumptions</li>
+                      <li>• Service utilization parameters</li>
+                    </ul>
+                    <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                      <strong>Active Scenario:</strong> {activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Unknown'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+      {activeScenario === 'working' && (
+        <div className="p-4 bg-orange-50 rounded-lg">
+          <p className="text-sm text-orange-800">
+            <strong>Working Changes:</strong> You have applied parameter changes that are now visible in the visualizations. 
+            Click "Save as New Scenario" above to permanently save these changes, or load a different scenario to discard them.
+          </p>
+        </div>
+      )}
 
       {scenarios.length > 0 && (
-        
-          
-            Saved Scenarios
-            
-              
-                {scenarios.map(scenario => (
-                  
-                    
-                      
-                        
-                          {scenario.name}
-                          
-                            {scenario.description || 'No description'}
-                            Created: {new Date(scenario.createdAt).toLocaleDateString()}
-                          
-                        
-                        
-                          
-                            Load
-                          
-                          
-                            Export
-                          
-                          
-                            Delete
-                          
-                        
-                      
-                    
-                  
-                ))}
-              
-            
-          
-        
-      
+        <div className="mt-6">
+          <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
+          <div className="space-y-2">
+            {scenarios.map(scenario => (
+              <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <p className="font-medium">{scenario.name}</p>
+                  <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
+                  <p className="text-xs text-gray-500">Created: {new Date(scenario.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => onSelectScenario(scenario.id)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded"
+                  >
+                    Load
+                  </button>
+                  <button 
+                    onClick={() => exportScenarioToExcel(scenario.id)}
+                    className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
+                    title="Export this scenario to Excel"
+                  >
+                    Export
+                  </button>
+                  <button className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      
-  
+      </div>
+  );
 };
 
   const ParameterImpactChart = ({ parameters }) => {
@@ -1680,22 +1655,23 @@ function App() {
     }));
 
     return (
-      
-        
-          
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-          
-        
-      
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={impactData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="occupation" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="educationalInflow" stackId="positive" fill="#10B981" name="Education" />
+            <Bar dataKey="internationalMigrants" stackId="positive" fill="#3B82F6" name="Int'l Migration" />
+            <Bar dataKey="domesticMigrants" stackId="positive" fill="#6366F1" name="Dom. Migration" />
+            <Bar dataKey="reEntrants" stackId="positive" fill="#8B5CF6" name="Re-Entrants" />
+            <Bar dataKey="retirementImpact" stackId="negative" fill="#EF4444" name="Retirement" />
+            <Bar dataKey="attritionImpact" stackId="negative" fill="#F59E0B" name="Attrition" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     );
   };
 
@@ -1721,91 +1697,81 @@ function App() {
     const CustomTooltip = ({ active, payload, label }) => {
       if (active && payload && payload.length) {
         return (
-          
-            
-              {`Year: ${label}`}
-            
+          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+            <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
             {payload.map((entry, index) => (
-              
+              <p key={index} className="text-sm" style={{ color: entry.color }}>
                 {`${entry.name}: ${entry.value.toLocaleString()} FTE`}
-              
+              </p>
             ))}
-          
+          </div>
         );
       }
       return null;
     };
 
     return (
-      
-        
-          
-            
-              
-              
-              
-              
-                
-                  
-                  
-                
-              
-              
-                
-                  
-                  
-                  Workforce Gap (FTE)
-                
-              
-              
-              
-                
-                  
-                    
-                      
-                        {`${entry.name}: ${entry.value.toLocaleString()} FTE`}
-                      
-                    
-                  
-                
-              
-              
-                
-                  
-                    
-                      
-                    
-                    
-                      
-                      
-                        {occ}
-                      
-                    
-                  
-                
-              
-              
-                
-                  
-                  
-                  
-                  
-                  
-                  
-                  
-                  
-                
-                
-                  
-                  
-                  
-                  
-                
-              
-            
-          
-        
-      
+      <div className="h-96 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart 
+            data={chartData} 
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <defs>
+              {selectedOccupations.map(occ => (
+                <linearGradient key={`gradient-${occ}`} id={`gradient-${occ}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.1}/>
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis 
+              dataKey="year" 
+              stroke="#6B7280"
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+            />
+            <YAxis 
+              stroke="#6B7280"
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+              label={{ value: 'Workforce Gap (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              verticalAlign="bottom" 
+              height={50}
+              iconType="line"
+              wrapperStyle={{ 
+                paddingTop: '20px',
+                fontSize: '12px',
+                lineHeight: '1.2'
+              }}
+              iconSize={14}
+              formatter={(value) => {
+                // Truncate long occupation names for legend display
+                if (value.length > 20) {
+                  return value.substring(0, 18) + '...';
+                }
+                return value;
+              }}
+            />
+            {selectedOccupations.map(occ => (
+              <Line
+                key={occ}
+                type="monotone"
+                dataKey={occ}
+                stroke={colors[occ] || '#6B7280'}
+                strokeWidth={3}
+                fill={`url(#gradient-${occ})`}
+                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+                animationDuration={1500}
+                animationEasing="ease-in-out"
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     );
   };
 
@@ -1813,7 +1779,7 @@ function App() {
     const years = [currentYear - 1, currentYear, currentYear + 1].filter(y => data[y]);
 
     return (
-      
+      <div className="space-y-4">
         {selectedOccupations.map(occ => {
           const prevGap = data[currentYear - 1]?.[occ]?.gap || 0;
           const currGap = data[currentYear]?.[occ]?.gap || 0;
@@ -1823,41 +1789,39 @@ function App() {
           const changeToNext = nextGap - currGap;
 
           return (
-            
-              
-                {occ}
-                
-                  
-                    Previous:
-                    {prevGap}
-                  
-                  
-                    Current:
-                    {currGap}
-                  
-                  
-                    Next:
-                    {nextGap}
-                  
-                
-                
-                  
-                    {changeToNext > 0 ? '↑' : '↓'} {Math.abs(changeToNext)} FTE change expected
-                  
-                
-              
-            
+            <div key={occ} className="border-b pb-3">
+              <h4 className="font-medium text-gray-800">{occ}</h4>
+              <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                <div>
+                  <span className="text-gray-600">Previous:</span>
+                  <span className="ml-2 font-semibold">{prevGap}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Current:</span>
+                  <span className="ml-2 font-semibold text-blue-600">{currGap}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Next:</span>
+                  <span className="ml-2 font-semibold">{nextGap}</span>
+                </div>
+              </div>
+              <div className="flex items-center mt-2 text-xs">
+                <span className={`flex items-center ${changeToNext > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {changeToNext > 0 ? '↑' : '↓'} {Math.abs(changeToNext)} FTE change expected
+                </span>
+              </div>
+            </div>
           );
         })}
-      
+      </div>
     );
   };
 
   const SupplyDemandComparison = ({ data, selectedOccupations }) => {
-    if (!data) return No data available;
+    if (!data) return <div>No data available</div>;
 
     return (
-      
+      <div className="space-y-4">
         {selectedOccupations.map(occ => {
           const values = data[occ];
           if (!values) return null;
@@ -1865,29 +1829,29 @@ function App() {
           const fillPercentage = Math.min((values.supply / values.demand) * 100, 100);
 
           return (
-            
-              
-                
-                  {occ}
-                  
-                    Gap: {values.gap > 0 ? '+' : ''}{values.gap} FTE
-                  
-                
-                
-                  
-                  
-                
-                
-                  
-                    Supply: {values.supply}
-                    Demand: {values.demand}
-                  
-                
-              
-            
+            <div key={occ} className="space-y-2">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-gray-800">{occ}</h4>
+                <span className={`text-sm font-semibold ${values.gap > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  Gap: {values.gap > 0 ? '+' : ''}{values.gap} FTE
+                </span>
+              </div>
+              <div className="relative">
+                <div className="bg-gray-200 rounded-full h-8 overflow-hidden">
+                  <div 
+                    className="bg-blue-500 h-full rounded-full transition-all duration-500 ease-out"
+                    style={{ width: `${fillPercentage}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between mt-1 text-xs text-gray-600">
+                  <span>Supply: {values.supply}</span>
+                  <span>Demand: {values.demand}</span>
+                </div>
+              </div>
+            </div>
           );
         })}
-      
+      </div>
     );
   };
 
@@ -1905,7 +1869,7 @@ function App() {
           insights.push({
             type: 'critical',
             occupation: occ,
-            message: {Math.round(avgGap)} FTE`
+            message: `${occ} faces critical shortage with average gap of ${Math.round(avgGap)} FTE`
           });
         }
 
@@ -1913,7 +1877,7 @@ function App() {
           insights.push({
             type: 'warning',
             occupation: occ,
-            message: {Math.round(trend)} FTE growth over period`
+            message: `${occ} gap increasing rapidly - ${Math.round(trend)} FTE growth over period`
           });
         }
       });
@@ -1924,32 +1888,35 @@ function App() {
     const insights = calculateInsights();
 
     return (
-      
+      <div className="space-y-3">
         {insights.map((insight, index) => (
-          
-            
-              
-                
-                  
-                    
-                      
-                    
-                  
-                
-                
-                  
-                    {insight.message}
-                  
-                
-              
-            
-          
+          <div 
+            key={index}
+            className={`p-4 rounded-lg flex items-start space-x-3 ${
+              insight.type === 'critical' ? 'bg-red-50' : 'bg-yellow-50'
+            }`}
+          >
+            <div className={`flex-shrink-0 ${
+              insight.type === 'critical' ? 'text-red-600' : 'text-yellow-600'
+            }`}>
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className={`text-sm font-medium ${
+                insight.type === 'critical' ? 'text-red-800' : 'text-yellow-800'
+              }`}>
+                {insight.message}
+              </p>
+            </div>
+          </div>
         ))}
 
         {insights.length === 0 && (
-          No critical insights for selected occupations.
+          <p className="text-gray-600">No critical insights for selected occupations.</p>
         )}
-      
+      </div>
     );
   };
 
@@ -1957,7 +1924,7 @@ function App() {
     const years = Object.keys(data).sort();
     const chartData = years.map(year => {
       const yearData = { year };
-
+      
       // Calculate supply and demand for each selected occupation
       selectedOccupations.forEach(occ => {
         const occData = data[year][occ] || { supply: 0, demand: 0 };
@@ -1965,7 +1932,7 @@ function App() {
         yearData[`${occ}_demand`] = occData.demand;
         yearData[`${occ}_gap`] = occData.demand - occData.supply;
       });
-
+      
       return yearData;
     });
 
@@ -1990,144 +1957,173 @@ function App() {
         });
 
         return (
-          
-            
-              {`Year: ${label}`}
-            
+          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-sm">
+            <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
             {Object.entries(occupationData).map(([occupation, data]) => (
-              
-                
-                  {occupation}
-                  
-                    {data.supply !== undefined && (
-                      
-                        Supply: {data.supply.toLocaleString()} FTE
-                      
-                    )}
-                    {data.demand !== undefined && (
-                      
-                        Demand: {data.demand.toLocaleString()} FTE
-                      
-                    )}
-                    {data.gap !== undefined && (
-                      
-                        Gap: {data.gap > 0 ? '+' : ''}{data.gap.toLocaleString()} FTE
-                      
-                    )}
-                  
-                
-              
+              <div key={occupation} className="mb-2 last:mb-0">
+                <p className="text-sm font-medium text-gray-700 break-words">{occupation}</p>
+                <div className="ml-2 space-y-1">
+                  {data.supply !== undefined && (
+                    <p className="text-xs" style={{ color: colors[occupation] }}>
+                      Supply: {data.supply.toLocaleString()} FTE
+                    </p>
+                  )}
+                  {data.demand !== undefined && (
+                    <p className="text-xs" style={{ color: colors[occupation] }}>
+                      Demand: {data.demand.toLocaleString()} FTE
+                    </p>
+                  )}
+                  {data.gap !== undefined && (
+                    <p className={`text-xs font-medium ${data.gap > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      Gap: {data.gap > 0 ? '+' : ''}{data.gap.toLocaleString()} FTE
+                    </p>
+                  )}
+                </div>
+              </div>
             ))}
-          
+          </div>
         );
       }
       return null;
     };
 
     return (
-      
-        
-          
-            
-              
-              
-              
-              
-                
-                  
-                  
-                
-              
-              
-                
-                  
-                  
-                  Workforce (FTE)
-                
-              
-              
-                
-                  
+      <div className="h-96 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <defs>
+              {selectedOccupations.map(occ => [
+                <linearGradient key={`supply-gradient-${occ}`} id={`supply-gradient-${occ}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.1}/>
+                </linearGradient>,
+                <linearGradient key={`demand-gradient-${occ}`} id={`demand-gradient-${occ}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor={colors[occ] || '#6B7280'} stopOpacity={0.05}/>
+                </linearGradient>
+              ]).flat()}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis 
+              dataKey="year" 
+              stroke="#6B7280"
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+            />
+            <YAxis 
+              stroke="#6B7280"
+              tick={{ fill: '#6B7280', fontSize: 12 }}
+              label={{ value: 'Workforce (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              verticalAlign="bottom" 
+              height={80}
+              wrapperStyle={{ 
+                paddingTop: '20px',
+                fontSize: '12px',
+                lineHeight: '1.2'
+              }}
+              iconSize={14}
+              formatter={(value, entry) => {
+                // Extract occupation name from the dataKey (remove _supply or _demand suffix)
+                const occupation = value.replace(/_supply|_demand/, '');
+                return occupation;
+              }}
+              content={(props) => {
+                const { payload } = props;
+                if (!payload || !payload.length) return null;
+
+                // Group by occupation and get unique occupations
+                const occupations = [...new Set(payload.map(item => 
+                  item.dataKey.replace(/_supply|_demand/, '')
+                ))];
+
+                return (
+                  <div className="flex flex-col items-center space-y-2 mt-4">
+                    {/* Occupation colors */}
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {occupations.map(occ => (
+                        <div key={occ} className="flex items-center space-x-1">
+                          <div 
+                            className="w-3 h-3 rounded"
+                            style={{ backgroundColor: colors[occ] || '#6B7280' }}
+                          ></div>
+                          <span className="text-xs">
+                            {occ}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                     
-                  
-                  
-                
-              
-              
-                
-                  
-                    
-                      
-                        
-                          
-                        
-                        {occ}
-                      
-                    
-                    
-                      
-                        
-                          
-                        
-                        Solid Line = Supply
-                      
-                    
-                    
-                      
-                        
-                          
-                        
-                        Dashed Line = Demand
-                      
-                    
-                  
-                
-              
-              
-                
-                  
-                  
-                  
-                  
-                  
-                  
-                  
-                
-                
-                  
-                  
-                  
-                  
-                
-              
-            
-          
-        
-      
+                    {/* Line type legend */}
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-4 h-0.5 bg-gray-600"></div>
+                        <span className="text-xs">Solid Line = Supply</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div 
+                          className="w-4 h-0.5 bg-gray-600" 
+                          style={{ 
+                            backgroundImage: 'repeating-linear-gradient(to right, #6B7280 0, #6B7280 4px, transparent 4px, transparent 8px)' 
+                          }}
+                        ></div>
+                        <span className="text-xs">Dashed Line = Demand</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            {selectedOccupations.map(occ => [
+              <Line
+                key={`${occ}_supply`}
+                type="monotone"
+                dataKey={`${occ}_supply`}
+                stroke={colors[occ] || '#6B7280'}
+                strokeWidth={3}
+                strokeDasharray="0"
+                name={`${occ} Supply`}
+                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+              />,
+              <Line
+                key={`${occ}_demand`}
+                type="monotone"
+                dataKey={`${occ}_demand`}
+                stroke={colors[occ] || '#6B7280'}
+                strokeWidth={3}
+                strokeDasharray="8 4"
+                name={`${occ} Demand`}
+                dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4, strokeDasharray: "0" }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+              />
+            ]).flat()}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     );
   };
 
   const PopulationSegmentAnalysis = () => (
-    
-      
-        
-          {workforceData.populationSegments.healthStatus.map(status => (
-            
-              
-                {Math.floor(Math.random() * 30 + 10)}%
-                {status}
-              
-            
-          ))}
-        
-      
-      
-        
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        {workforceData.populationSegments.healthStatus.map(status => (
+          <div key={status} className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">
+              {Math.floor(Math.random() * 30 + 10)}%
+            </div>
+            <div className="text-sm text-gray-600">{status}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+        <p className="text-sm text-blue-800">
           Population health segmentation drives service demand projections. 
           Chronic conditions are expected to increase by 22% over the forecast period.
-        
-      
-    
+        </p>
+      </div>
+    </div>
   );
 
   const DataImportModal = () => {
@@ -2157,11 +2153,11 @@ function App() {
 
       try {
         const fileContent = await selectedFile.text();
-
+        
         if (dataType === 'baseline') {
           // Process baseline population projections
           const csvData = parseCSV(fileContent);
-
+          
           // Validate required columns
           const requiredColumns = ['Year', 'Gender', 'Age_Group', 'Projected_Population'];
           const hasRequiredColumns = requiredColumns.every(col => 
@@ -2174,14 +2170,14 @@ function App() {
 
           // Process population data into growth rates
           const populationGrowth = processPopulationData(csvData);
-
+          
           if (!populationGrowth) {
             throw new Error('Failed to process population data');
           }
 
           // Generate complete parameter set from uploaded data
           const newBaselineParameters = generateParametersFromUploadedData(populationGrowth);
-
+          
           // Update the app state with new baseline data
           setWorkforceData(prev => ({
             ...prev,
@@ -2204,7 +2200,7 @@ function App() {
 
           // Reset editing parameters to use new baseline
           setEditingParameters(JSON.parse(JSON.stringify(newBaselineParameters)));
-
+          
           // Clear any existing scenarios and reset state
           setScenarios([]);
           setActiveScenario('baseline');
@@ -2218,7 +2214,7 @@ function App() {
             type: 'success', 
             message: `Successfully imported baseline data with ${csvData.length} population records` 
           });
-
+          
           console.log('Data import successful:', {
             recordCount: csvData.length,
             years: Object.keys(populationGrowth).length,
@@ -2249,103 +2245,96 @@ function App() {
     };
 
     return (
-      
-        
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-[500px] max-h-[90vh] overflow-y-auto">
+          <h3 className="text-lg font-semibold mb-4">Import Baseline Data</h3>
           
-            Import Baseline Data
-          
-
           {/* Status Messages */}
           {uploadStatus && (
-            
+            <div className={`mb-4 p-3 rounded-lg ${
+              uploadStatus.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+              uploadStatus.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+              'bg-blue-50 text-blue-800 border border-blue-200'
+            }`}>
               {uploadStatus.message}
-            
+            </div>
           )}
 
-          
-            
-              
-                
-                  Data Type
-                
-                
-                  
-                    Baseline Population Projections
-                    Workforce Supply Data (ComingSoon)
-                    Service Utilization Data (Coming Soon)
-                    HealthStatus Data (Coming Soon)
-                  
-                
-              
-            
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Data Type</label>
+              <select 
+                value={dataType}
+                onChange={(e) => setDataType(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                disabled={isProcessing}
+              >
+                <option value="baseline">Baseline Population Projections</option>
+                <option value="supply" disabled>Workforce Supply Data (Coming Soon)</option>
+                <option value="demand" disabled>Service Utilization Data (Coming Soon)</option>
+                <option value="health" disabled>Health Status Data (Coming Soon)</option>
+              </select>
+            </div>
 
-            
-              
-                
-                  File Upload
-                
-                
-                  
-                
-                {selectedFile && (
-                  
-                    Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                  
-                )}
-              
-            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">File Upload</label>
+              <input 
+                type="file" 
+                accept=".csv" 
+                onChange={handleFileSelect}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                disabled={isProcessing}
+              />
+              {selectedFile && (
+                <p className="text-xs text-gray-600 mt-1">
+                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+            </div>
 
             {/* File Format Requirements */}
-            
-              
-                Required CSV Format:
-                
-                  
-                    Columns: Year, Gender, Age_Group, Projected_Population
-                    Gender: Male, Female
-                    Age_Group: 0-18, 19-64, 65-84, 85+
-                    Years: 2024-2034 (11 years)
-                    Example: 2024,Female,0-18,80620
-                  
-                
-              
-            
+            <div className="bg-gray-50 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-gray-800 mb-2">Required CSV Format:</h4>
+              <div className="text-xs text-gray-600 space-y-1">
+                <p><strong>Columns:</strong> Year, Gender, Age_Group, Projected_Population</p>
+                <p><strong>Gender:</strong> Male, Female</p>
+                <p><strong>Age_Group:</strong> 0-18, 19-64, 65-84, 85+</p>
+                <p><strong>Years:</strong> 2024-2034 (11 years)</p>
+                <p><strong>Example:</strong> 2024,Female,0-18,80620</p>
+              </div>
+            </div>
 
             {/* Data Impact Information */}
-            
-              
-                What happens when you import:
-                
-                  
-                    
-                      • Population growth rates calculated from your projections
-                    
-                    
-                      • Workforce supply parameters derived from population ratios
-                    
-                    
-                      • Health status and service utilization parameters adjusted
-                    
-                    
-                      • All existing scenarios will be cleared
-                    
-                    
-                      • New baseline will be used for all calculations
-                    
-                  
-                
-              
-            
+            <div className="bg-blue-50 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">What happens when you import:</h4>
+              <ul className="text-xs text-blue-700 space-y-1">
+                <li>• Population growth rates calculated from your projections</li>
+                <li>• Workforce supply parameters derived from population ratios</li>
+                <li>• Health status and service utilization parameters adjusted</li>
+                <li>• All existing scenarios will be cleared</li>
+                <li>• New baseline will be used for all calculations</li>
+              </ul>
+            </div>
 
-            
-              
+            <div className="flex space-x-2">
+              <button 
+                onClick={handleClose}
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                disabled={isProcessing}
+              >
                 Cancel
+              </button>
+              <button 
+                onClick={handleImport}
+                disabled={!selectedFile || isProcessing}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {isProcessing ? 'Processing...' : 'Import Data'}
-              
-            
-          
-        
-      
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -2378,35 +2367,54 @@ function App() {
     };
 
     return (
-      
-        
-          
-            Create New Scenario
-            
-              
-                Scenario Name
-                
-                  
-                    {scenarioName.length}/50 characters
-                  
-                
-              
-              
-                Description (Optional)
-                
-                  
-                    {scenarioDescription.length}/200 characters
-                  
-                
-              
-              
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96">
+          <h3 className="text-lg font-semibold mb-4">Create New Scenario</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Scenario Name</label>
+              <input 
+                type="text" 
+                value={scenarioName}
+                onChange={(e) => setScenarioName(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="e.g., Increased Training Seats" 
+                autoFocus
+                maxLength={50}
+              />
+              <p className="text-xs text-gray-500 mt-1">{scenarioName.length}/50 characters</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+              <textarea 
+                value={scenarioDescription}
+                onChange={(e) => setScenarioDescription(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                rows="3" 
+                placeholder="Describe the scenario changes..."
+                maxLength={200}
+              ></textarea>
+              <p className="text-xs text-gray-500 mt-1">{scenarioDescription.length}/200 characters</p>
+            </div>
+            <div className="flex space-x-2">
+              <button 
+                onClick={handleCancel}
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+              >
                 Cancel
+              </button>
+              <button 
+                onClick={handleCreate}
+                disabled={!scenarioName.trim()}
+                className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
                 Create Scenario
-              
-            
-          
-        
-      
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -2422,77 +2430,89 @@ function App() {
   }, []);
 
   return (
-    
-      
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-100">
         {/* Header */}
-        
-          
-            
-              
-                
-                  Nova Scotia Primary Care Workforce Planning
-                  
-                    Multi-Professional Needs-Based Analytics Dashboard
-                    {isUsingUploadedData && (
-                      
-                        Using Uploaded Baseline Data
-                      
-                    )}
-                    {!isUsingUploadedData && (
-                      
-                        Using Sample Data
-                      
-                    )}
-                  
-                
-                
-                  
-                    
-                      
-                    
-                    {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
-                      
-                        {year}
-                      
-                    ))}
-                  
-                  
-                    {isUsingUploadedData ? 'Replace Data' : 'Import Data'}
-                  
-                
-              
-            
-          
-        
+        <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Nova Scotia Primary Care Workforce Planning</h1>
+              <div className="flex items-center space-x-4">
+                <p className="text-sm text-gray-600">Multi-Professional Needs-Based Analytics Dashboard</p>
+                {isUsingUploadedData && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    Using Uploaded Baseline Data
+                  </span>
+                )}
+                {!isUsingUploadedData && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    Using Sample Data
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <select 
+                value={selectedYear} 
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="border border-gray-300 rounded-md px-3 py-2"
+              >
+                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <button 
+                onClick={() => setShowDataImport(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                {isUsingUploadedData ? 'Replace Data' : 'Import Data'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-        {/* Navigation */}
-        
-          
-            
-              
-                
-                  Executive View
-                
-                
-                  Scenario Builder
-                
-              
-            
-          
-        
+      {/* Navigation */}
+      <nav className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setCurrentView('executive')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                currentView === 'executive' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Executive View
+            </button>
+            <button
+              onClick={() => setCurrentView('analyst')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                currentView === 'analyst' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Scenario Builder
+            </button>
+          </div>
+        </div>
+      </nav>
 
-        {/* Main Content */}
-        
-          
-            {currentView === 'executive' ?  : }
-          
-        
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <ErrorBoundary>
+          {currentView === 'executive' ? <ExecutiveView /> : <AnalystView />}
+        </ErrorBoundary>
+      </main>
 
-        {/* Modals */}
-        {showDataImport && }
-        {showScenarioModal && }
-      
-    
+      {/* Modals */}
+      {showDataImport && <DataImportModal />}
+      {showScenarioModal && <ScenarioModal />}
+      </div>
+    </ErrorBoundary>
   );
 }
 
