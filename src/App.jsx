@@ -60,10 +60,15 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
       // Use setTimeout to ensure the input is available in the next tick
       setTimeout(() => {
         if (input && document.contains(input)) {
-          input.focus();
-          // For number inputs, select all text content
-          if (input.type === 'number') {
-            input.select();
+          try {
+            input.focus();
+            // For number inputs, select all text content
+            if (input.type === 'number') {
+              input.select();
+            }
+          } catch (error) {
+            // Silently handle any focus/selection errors
+            console.debug('Focus restoration error:', error);
           }
         }
       }, 0);
@@ -139,10 +144,15 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
       // Use setTimeout to ensure the input is available in the next tick
       setTimeout(() => {
         if (input && document.contains(input)) {
-          input.focus();
-          // For number inputs, select all text content
-          if (input.type === 'number') {
-            input.select();
+          try {
+            input.focus();
+            // For number inputs, select all text content
+            if (input.type === 'number') {
+              input.select();
+            }
+          } catch (error) {
+            // Silently handle any focus/selection errors
+            console.debug('Focus restoration error:', error);
           }
         }
       }, 0);
@@ -1528,8 +1538,7 @@ function App() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
             <select 
-              ```text
-      value={activeScenario}
+              value={activeScenario}
               onChange={(e) => onSelectScenario(e.target.value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2"
             >
