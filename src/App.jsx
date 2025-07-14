@@ -2049,7 +2049,7 @@ function App() {
                             style={{ backgroundColor: colors[occ] || '#6B7280' }}
                           ></div>
                           <span className="text-xs">
-                            {occ.length > 15 ? occ.substring(0, 13) + '...' : occ}
+                            {occ}
                           </span>
                         </div>
                       ))}
@@ -2059,7 +2059,7 @@ function App() {
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
                         <div className="w-4 h-0.5 bg-gray-600"></div>
-                        <span className="text-xs">Supply</span>
+                        <span className="text-xs">Solid Line = Supply</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <div 
@@ -2068,7 +2068,7 @@ function App() {
                             backgroundImage: 'repeating-linear-gradient(to right, #6B7280 0, #6B7280 4px, transparent 4px, transparent 8px)' 
                           }}
                         ></div>
-                        <span className="text-xs">Demand</span>
+                        <span className="text-xs">Dashed Line = Demand</span>
                       </div>
                     </div>
                   </div>
