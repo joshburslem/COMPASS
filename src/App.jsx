@@ -761,6 +761,36 @@ function App() {
           </div>
         </div>
 
+        {/* Occupation Filter */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => toggleOccupation('All')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedOccupations.includes('All')
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              All Occupations
+            </button>
+            {workforceData.occupations.map(occ => (
+              <button
+                key={occ}
+                onClick={() => toggleOccupation(occ)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {occ}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Year Selector */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
@@ -1004,7 +1034,7 @@ function App() {
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
               data={getCurrentScenarioProjections()} 
-              selectedOccupations={workforceData.occupations}
+              selectedOccupations={getFilteredOccupations()}
             />
           ) : (
             <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
