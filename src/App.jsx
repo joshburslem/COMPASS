@@ -729,7 +729,9 @@ function App() {
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <p className="text-xs text-gray-500">
+            <h2 className="text-2xl font-bold text-gray-800">Parameter Configuration</h2>
+            <p className="text-sm text-gray-600">Adjust workforce parameters and analyze scenario impacts</p>
+            <p className="text-xs text-gray-500 mt-1">
               Current: {activeScenario === 'baseline' ? 'Baseline' : scenarios.find(s => s.id === activeScenario)?.name || 'Unknown Scenario'}
             </p>
           </div>
