@@ -1739,9 +1739,21 @@ function App() {
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               verticalAlign="bottom" 
-              height={36}
+              height={50}
               iconType="line"
-              wrapperStyle={{ paddingTop: '20px' }}
+              wrapperStyle={{ 
+                paddingTop: '20px',
+                fontSize: '12px',
+                lineHeight: '1.2'
+              }}
+              iconSize={14}
+              formatter={(value) => {
+                // Truncate long occupation names for legend display
+                if (value.length > 20) {
+                  return value.substring(0, 18) + '...';
+                }
+                return value;
+              }}
             />
             {selectedOccupations.map(occ => (
               <Line
@@ -1945,11 +1957,11 @@ function App() {
         });
 
         return (
-          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-xs">
+          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-sm">
             <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
             {Object.entries(occupationData).map(([occupation, data]) => (
               <div key={occupation} className="mb-2 last:mb-0">
-                <p className="text-sm font-medium text-gray-700">{occupation}</p>
+                <p className="text-sm font-medium text-gray-700 break-words">{occupation}</p>
                 <div className="ml-2 space-y-1">
                   {data.supply !== undefined && (
                     <p className="text-xs" style={{ color: colors[occupation] }}>
@@ -2005,8 +2017,20 @@ function App() {
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               verticalAlign="bottom" 
-              height={60}
-              wrapperStyle={{ paddingTop: '20px' }}
+              height={80}
+              wrapperStyle={{ 
+                paddingTop: '20px',
+                fontSize: '12px',
+                lineHeight: '1.2'
+              }}
+              iconSize={14}
+              formatter={(value) => {
+                // Truncate long occupation names for legend display
+                if (value.length > 20) {
+                  return value.substring(0, 18) + '...';
+                }
+                return value;
+              }}
             />
             {selectedOccupations.map(occ => [
               <Line
