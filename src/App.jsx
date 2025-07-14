@@ -208,6 +208,8 @@ function App() {
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
   const [visualizationsNeedUpdate, setVisualizationsNeedUpdate] = React.useState(false);
   const [lastAppliedProjections, setLastAppliedProjections] = React.useState(null);
+  const [uploadStatus, setUploadStatus] = React.useState(null);
+  const [isUsingUploadedData, setIsUsingUploadedData] = React.useState(false);
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState(() => {
@@ -239,6 +241,172 @@ function App() {
   const [editingParameters, setEditingParameters] = React.useState(() => 
     JSON.parse(JSON.stringify(workforceData.baselineParameters))
   );
+
+  // CSV parsing utility functions
+  const parseCSV = (csvText) => {
+    const lines = csvText.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    const data = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index];
+      });
+      data.push(row);
+    }
+    
+    return data;
+  };
+
+  const processPopulationData = (csvData) => {
+    try {
+      const populationGrowth = {};
+      const years = [...new Set(csvData.map(row => parseInt(row.Year)))].sort();
+      const ageGroups = ['0-18', '19-64', '65-84', '85+'];
+
+      years.forEach(year => {
+        populationGrowth[year] = {};
+        ageGroups.forEach(ageGroup => {
+          const currentYearData = csvData.filter(row => 
+            parseInt(row.Year) === year && row.Age_Group === ageGroup
+          );
+          const totalCurrentPop = currentYearData.reduce((sum, row) => 
+            sum + parseFloat(row.Projected_Population), 0
+          );
+
+          if (year > years[0]) {
+            const prevYear = year - 1;
+            const prevYearData = csvData.filter(row => 
+              parseInt(row.Year) === prevYear && row.Age_Group === ageGroup
+            );
+            const totalPrevPop = prevYearData.reduce((sum, row) => 
+              sum + parseFloat(row.Projected_Population), 0
+            );
+
+            if (totalPrevPop > 0) {
+              populationGrowth[year][ageGroup] = (totalCurrentPop - totalPrevPop) / totalPrevPop;
+            } else {
+              populationGrowth[year][ageGroup] = 0.02; // Default 2% growth
+            }
+          } else {
+            populationGrowth[year][ageGroup] = 0.02; // Default for base year
+          }
+        });
+      });
+
+      return populationGrowth;
+    } catch (error) {
+      console.error('Error processing population data:', error);
+      return null;
+    }
+  };
+
+  const generateParametersFromUploadedData = (populationGrowth) => {
+    const years = Object.keys(populationGrowth).map(y => parseInt(y)).sort();
+    const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
+    const ageGroups = ['0-18', '19-64', '65-84', '85+'];
+
+    const params = {
+      supply: {},
+      educationalInflow: {},
+      internationalMigrants: {},
+      domesticMigrants: {},
+      reEntrants: {},
+      retirementRate: {},
+      attritionRate: {},
+      populationGrowth: populationGrowth,
+      healthStatusChange: {},
+      serviceUtilization: {}
+    };
+
+    years.forEach(year => {
+      // Initialize supply parameters based on realistic workforce ratios
+      params.supply[year] = {};
+      params.educationalInflow[year] = {};
+      params.internationalMigrants[year] = {};
+      params.domesticMigrants[year] = {};
+      params.reEntrants[year] = {};
+      params.retirementRate[year] = {};
+      params.attritionRate[year] = {};
+
+      // Calculate total population for the year
+      const totalPopByAge = Object.values(populationGrowth[year] || {});
+      const avgPopGrowth = totalPopByAge.length > 0 ? 
+        totalPopByAge.reduce((a, b) => a + b, 0) / totalPopByAge.length : 0.02;
+
+      occupations.forEach(occ => {
+        // Base supply calculated from population ratios (per 1000 population)
+        const basePopulation = 1000000; // Approximate NS population
+        const ratios = {
+          'Physicians': 2.5,
+          'Nurse Practitioners': 0.8,
+          'Registered Nurses': 4.2,
+          'Licensed Practical Nurses': 1.8,
+          'Medical Office Assistants': 3.2
+        };
+
+        const baseSupply = (basePopulation * ratios[occ] / 1000);
+        params.supply[year][occ] = Math.round(baseSupply * (1 + avgPopGrowth * (year - 2024)));
+
+        // Set educational inflow based on typical training graduation rates
+        params.educationalInflow[year][occ] = {
+          'Physicians': Math.round(baseSupply * 0.04), // 4% of workforce annually
+          'Nurse Practitioners': Math.round(baseSupply * 0.06),
+          'Registered Nurses': Math.round(baseSupply * 0.05),
+          'Licensed Practical Nurses': Math.round(baseSupply * 0.08),
+          'Medical Office Assistants': Math.round(baseSupply * 0.03)
+        }[occ];
+
+        // Set migration parameters
+        params.internationalMigrants[year][occ] = Math.round(params.educationalInflow[year][occ] * 0.25);
+        params.domesticMigrants[year][occ] = Math.round(params.educationalInflow[year][occ] * 0.15);
+        params.reEntrants[year][occ] = Math.round(params.educationalInflow[year][occ] * 0.10);
+
+        // Set retirement and attrition rates
+        params.retirementRate[year][occ] = {
+          'Physicians': 0.06,
+          'Nurse Practitioners': 0.05,
+          'Registered Nurses': 0.04,
+          'Licensed Practical Nurses': 0.04,
+          'Medical Office Assistants': 0.03
+        }[occ];
+
+        params.attritionRate[year][occ] = 0.15;
+      });
+
+      // Health status changes (derived from population growth patterns)
+      params.healthStatusChange[year] = {
+        'Health Newborn': avgPopGrowth * 0.1,
+        'Major Acute': 0.01,
+        'Major Cancer': 0.005,
+        'Major Chronic': Math.max(0.015, avgPopGrowth * 1.5), // Chronic conditions grow with aging population
+        'Major Mental Health': 0.02,
+        'Major Newborn': avgPopGrowth * 0.1,
+        'Minor Acute': -0.005,
+        'Minor Chronic': 0.01,
+        'Moderate Acute': 0.005,
+        'Moderate Chronic': 0.015,
+        'Obstetrics': avgPopGrowth * 0.2,
+        'Other Cancer': 0.003,
+        'Other Mental Health': 0.015,
+        'Palliative': 0.005,
+        'Non-users': -0.01,
+        'Users with no health conditions': -0.015
+      };
+
+      // Service utilization changes
+      params.serviceUtilization[year] = {
+        'Primary Care Visits': Math.max(0.01, avgPopGrowth * 1.2),
+        'Preventive Care': 0.03,
+        'Chronic Disease Management': Math.max(0.02, avgPopGrowth * 2),
+        'Mental Health Services': 0.05
+      };
+    });
+
+    return params;
+  };
 
   function generateInitialParameters() {
     const years = Array.from({length: 11}, (_, i) => 2024 + i);
@@ -622,7 +790,16 @@ function App() {
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Executive Dashboard</h2>
-        <p className="text-sm text-gray-600 mb-4">Viewing baseline projections</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-600">Viewing baseline projections</p>
+          <div className="text-sm">
+            {isUsingUploadedData ? (
+              <span className="text-green-600 font-medium">📊 Using Your Uploaded Data</span>
+            ) : (
+              <span className="text-orange-600 font-medium">⚠️ Using Sample Data - Import your baseline projections for accurate results</span>
+            )}
+          </div>
+        </div>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -1935,39 +2112,207 @@ function App() {
     </div>
   );
 
-  const DataImportModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96">
-        <h3 className="text-lg font-semibold mb-4">Import Data</h3>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Data Type</label>
-            <select className="w-full border border-gray-300 rounded-md px-3 py-2">
-              <option>Population Data</option>
-              <option>Workforce Supply Data</option>
-              <option>Service Utilization Data</option>
-              <option>Health Status Data</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">File Upload</label>
-            <input type="file" accept=".csv,.xlsx,.xls" className="w-full border border-gray-300 rounded-md px-3 py-2" />
-          </div>
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => setShowDataImport(false)}
-              className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-            <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
-              Import
-            </button>
+  const DataImportModal = () => {
+    const [selectedFile, setSelectedFile] = React.useState(null);
+    const [dataType, setDataType] = React.useState('baseline');
+    const [isProcessing, setIsProcessing] = React.useState(false);
+
+    const handleFileSelect = (e) => {
+      const file = e.target.files[0];
+      if (file && file.name.endsWith('.csv')) {
+        setSelectedFile(file);
+        setUploadStatus(null);
+      } else {
+        setUploadStatus({ type: 'error', message: 'Please select a CSV file' });
+        setSelectedFile(null);
+      }
+    };
+
+    const handleImport = async () => {
+      if (!selectedFile) {
+        setUploadStatus({ type: 'error', message: 'Please select a file first' });
+        return;
+      }
+
+      setIsProcessing(true);
+      setUploadStatus({ type: 'info', message: 'Processing file...' });
+
+      try {
+        const fileContent = await selectedFile.text();
+        
+        if (dataType === 'baseline') {
+          // Process baseline population projections
+          const csvData = parseCSV(fileContent);
+          
+          // Validate required columns
+          const requiredColumns = ['Year', 'Gender', 'Age_Group', 'Projected_Population'];
+          const hasRequiredColumns = requiredColumns.every(col => 
+            csvData.length > 0 && csvData[0].hasOwnProperty(col)
+          );
+
+          if (!hasRequiredColumns) {
+            throw new Error(`CSV must contain columns: ${requiredColumns.join(', ')}`);
+          }
+
+          // Process population data into growth rates
+          const populationGrowth = processPopulationData(csvData);
+          
+          if (!populationGrowth) {
+            throw new Error('Failed to process population data');
+          }
+
+          // Generate complete parameter set from uploaded data
+          const newBaselineParameters = generateParametersFromUploadedData(populationGrowth);
+          
+          // Update the app state with new baseline data
+          setWorkforceData(prev => ({
+            ...prev,
+            baselineParameters: newBaselineParameters
+          }));
+
+          // Update executive data with new projections
+          const newProjections = generateSampleProjections(newBaselineParameters);
+          setExecutiveData({
+            projections: newProjections,
+            parameters: newBaselineParameters
+          });
+
+          // Reset editing parameters to use new baseline
+          setEditingParameters(JSON.parse(JSON.stringify(newBaselineParameters)));
+          
+          // Clear any existing scenarios
+          setScenarios([]);
+          setActiveScenario('baseline');
+          setUnsavedChanges(false);
+          setIsUsingUploadedData(true);
+
+          setUploadStatus({ 
+            type: 'success', 
+            message: `Successfully imported baseline data with ${csvData.length} population records` 
+          });
+          
+          console.log('Data import successful:', {
+            recordCount: csvData.length,
+            years: Object.keys(populationGrowth).length,
+            sampleGrowthRates: populationGrowth[2024]
+          });
+
+        } else {
+          throw new Error('Only baseline population data import is currently supported');
+        }
+
+      } catch (error) {
+        console.error('Import error:', error);
+        setUploadStatus({ 
+          type: 'error', 
+          message: `Import failed: ${error.message}` 
+        });
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    const handleClose = () => {
+      setShowDataImport(false);
+      setSelectedFile(null);
+      setDataType('baseline');
+      setIsProcessing(false);
+      setUploadStatus(null);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-[500px] max-h-[90vh] overflow-y-auto">
+          <h3 className="text-lg font-semibold mb-4">Import Baseline Data</h3>
+          
+          {/* Status Messages */}
+          {uploadStatus && (
+            <div className={`mb-4 p-3 rounded-lg ${
+              uploadStatus.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+              uploadStatus.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+              'bg-blue-50 text-blue-800 border border-blue-200'
+            }`}>
+              {uploadStatus.message}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Data Type</label>
+              <select 
+                value={dataType}
+                onChange={(e) => setDataType(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                disabled={isProcessing}
+              >
+                <option value="baseline">Baseline Population Projections</option>
+                <option value="supply" disabled>Workforce Supply Data (Coming Soon)</option>
+                <option value="demand" disabled>Service Utilization Data (Coming Soon)</option>
+                <option value="health" disabled>Health Status Data (Coming Soon)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">File Upload</label>
+              <input 
+                type="file" 
+                accept=".csv" 
+                onChange={handleFileSelect}
+                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                disabled={isProcessing}
+              />
+              {selectedFile && (
+                <p className="text-xs text-gray-600 mt-1">
+                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+            </div>
+
+            {/* File Format Requirements */}
+            <div className="bg-gray-50 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-gray-800 mb-2">Required CSV Format:</h4>
+              <div className="text-xs text-gray-600 space-y-1">
+                <p><strong>Columns:</strong> Year, Gender, Age_Group, Projected_Population</p>
+                <p><strong>Gender:</strong> Male, Female</p>
+                <p><strong>Age_Group:</strong> 0-18, 19-64, 65-84, 85+</p>
+                <p><strong>Years:</strong> 2024-2034 (11 years)</p>
+                <p><strong>Example:</strong> 2024,Female,0-18,80620</p>
+              </div>
+            </div>
+
+            {/* Data Impact Information */}
+            <div className="bg-blue-50 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">What happens when you import:</h4>
+              <ul className="text-xs text-blue-700 space-y-1">
+                <li>• Population growth rates calculated from your projections</li>
+                <li>• Workforce supply parameters derived from population ratios</li>
+                <li>• Health status and service utilization parameters adjusted</li>
+                <li>• All existing scenarios will be cleared</li>
+                <li>• New baseline will be used for all calculations</li>
+              </ul>
+            </div>
+
+            <div className="flex space-x-2">
+              <button 
+                onClick={handleClose}
+                className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 disabled:opacity-50"
+                disabled={isProcessing}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleImport}
+                disabled={!selectedFile || isProcessing}
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Processing...' : 'Import Data'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const ScenarioModal = () => {
     const [scenarioName, setScenarioName] = React.useState('');
@@ -2069,7 +2414,19 @@ function App() {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Nova Scotia Primary Care Workforce Planning</h1>
-              <p className="text-sm text-gray-600">Multi-Professional Needs-Based Analytics Dashboard</p>
+              <div className="flex items-center space-x-4">
+                <p className="text-sm text-gray-600">Multi-Professional Needs-Based Analytics Dashboard</p>
+                {isUsingUploadedData && (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                    Using Uploaded Baseline Data
+                  </span>
+                )}
+                {!isUsingUploadedData && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                    Using Sample Data
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <select 
@@ -2085,7 +2442,7 @@ function App() {
                 onClick={() => setShowDataImport(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
               >
-                Import Data
+                {isUsingUploadedData ? 'Replace Data' : 'Import Data'}
               </button>
             </div>
           </div>
