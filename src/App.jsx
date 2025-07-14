@@ -810,19 +810,53 @@ function App() {
         {/* Parameter Content */}
         <div className="mb-6">
           {activeParameterTab === 'supply' && (
-            <ParameterGridWithBaseline 
-              title="Current Supply (FTE)"
-              parameterType="supply"
-              parameters={editingParameters.supply}
-              baselineParameters={workforceData.baselineParameters.supply}
-              onUpdate={updateParameter}
-              occupations={workforceData.occupations}
-              selectedParameterYear={selectedParameterYear}
-            />
+            <div className="space-y-6">
+              {/* Year Selector for Supply Parameters */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Supply Parameters</h3>
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-medium text-gray-700">Editing Year:</label>
+                  <select 
+                    value={selectedParameterYear} 
+                    onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <ParameterGridWithBaseline 
+                title="Current Supply (FTE)"
+                parameterType="supply"
+                parameters={editingParameters.supply}
+                baselineParameters={workforceData.baselineParameters.supply}
+                onUpdate={updateParameter}
+                occupations={workforceData.occupations}
+                selectedParameterYear={selectedParameterYear}
+              />
+            </div>
           )}
 
           {activeParameterTab === 'inflows' && (
             <div className="space-y-6">
+              {/* Year Selector for Inflow Parameters */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Workforce Inflow Parameters</h3>
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-medium text-gray-700">Editing Year:</label>
+                  <select 
+                    value={selectedParameterYear} 
+                    onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <ParameterGridWithBaseline 
                 title="Educational Inflow (Annual Graduates)"
                 parameterType="educationalInflow"
@@ -864,6 +898,22 @@ function App() {
 
           {activeParameterTab === 'outflows' && (
             <div className="space-y-6">
+              {/* Year Selector for Outflow Parameters */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Retirement & Attrition Parameters</h3>
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-medium text-gray-700">Editing Year:</label>
+                  <select 
+                    value={selectedParameterYear} 
+                    onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <ParameterGridWithBaseline 
                 title="Retirement Rate (%)"
                 parameterType="retirementRate"
@@ -889,6 +939,22 @@ function App() {
 
           {activeParameterTab === 'demand' && (
             <div className="space-y-6">
+              {/* Year Selector for Demand Parameters */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Demand Driver Parameters</h3>
+                <div className="flex items-center space-x-3">
+                  <label className="text-sm font-medium text-gray-700">Editing Year:</label>
+                  <select 
+                    value={selectedParameterYear} 
+                    onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <DemandParameterGrid 
                 title="Population Growth Rate (% per year)"
                 parameterType="populationGrowth"
