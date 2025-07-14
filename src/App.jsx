@@ -1987,6 +1987,50 @@ function App() {
       return null;
     };
 
+    // Custom Legend Component
+    const CustomLegend = () => (
+      <div className="mt-4 bg-gray-50 rounded-lg p-4">
+        {/* Occupation Color Codes */}
+        <div className="mb-3">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Occupations</h4>
+          <div className="flex flex-wrap gap-3">
+            {selectedOccupations.map(occ => (
+              <div key={occ} className="flex items-center space-x-2">
+                <div 
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: colors[occ] || '#6B7280' }}
+                ></div>
+                <span className="text-xs text-gray-700">
+                  {occ.length > 15 ? `${occ.substring(0, 13)}...` : occ}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Line Type Legend */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Line Types</h4>
+          <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-0.5 bg-gray-700"></div>
+              <span className="text-xs text-gray-700">Supply</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div 
+                className="w-6 h-0.5 bg-gray-700" 
+                style={{ 
+                  backgroundImage: 'repeating-linear-gradient(to right, #374151 0, #374151 3px, transparent 3px, transparent 6px)',
+                  backgroundColor: 'transparent'
+                }}
+              ></div>
+              <span className="text-xs text-gray-700">Demand</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
     return (
       <div className="h-96 w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -2015,23 +2059,6 @@ function App() {
               label={{ value: 'Workforce (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              verticalAlign="bottom" 
-              height={80}
-              wrapperStyle={{ 
-                paddingTop: '20px',
-                fontSize: '12px',
-                lineHeight: '1.2'
-              }}
-              iconSize={14}
-              formatter={(value) => {
-                // Truncate long occupation names for legend display
-                if (value.length > 20) {
-                  return value.substring(0, 18) + '...';
-                }
-                return value;
-              }}
-            />
             {selectedOccupations.map(occ => [
               <Line
                 key={`${occ}_supply`}
@@ -2040,7 +2067,6 @@ function App() {
                 stroke={colors[occ] || '#6B7280'}
                 strokeWidth={3}
                 strokeDasharray="0"
-                name={`${occ} Supply`}
                 dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4 }}
                 activeDot={{ r: 6, strokeWidth: 2 }}
               />,
@@ -2051,7 +2077,6 @@ function App() {
                 stroke={colors[occ] || '#6B7280'}
                 strokeWidth={3}
                 strokeDasharray="8 4"
-                name={`${occ} Demand`}
                 dot={{ fill: colors[occ] || '#6B7280', strokeWidth: 2, r: 4, strokeDasharray: "0" }}
                 activeDot={{ r: 6, strokeWidth: 2 }}
               />
@@ -2059,21 +2084,8 @@ function App() {
           </LineChart>
         </ResponsiveContainer>
         
-        {/* Legend explanation */}
-        <div className="mt-4 flex justify-center">
-          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1">
-                <div className="w-4 h-0.5 bg-gray-600"></div>
-                <span>Solid line = Supply</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-4 h-0.5 bg-gray-600" style={{ backgroundImage: 'repeating-linear-gradient(to right, #6B7280 0, #6B7280 4px, transparent 4px, transparent 8px)' }}></div>
-                <span>Dashed line = Demand</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Custom Legend */}
+        <CustomLegend />
       </div>
     );
   };
