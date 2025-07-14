@@ -1254,28 +1254,34 @@ function App() {
             )}
           </div>
           
-          {/* Single occupation selector for cleaner visualization */}
+          {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Select Occupation to View</h3>
-            <select 
-              value={selectedOccupations.includes('All') ? 'All' : selectedOccupations[0] || 'All'}
-              onChange={(e) => {
-                if (e.target.value === 'All') {
-                  setSelectedOccupations(['All']);
-                } else {
-                  setSelectedOccupations([e.target.value]);
-                }
-              }}
-              className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Occupations</option>
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Occupations
+              </button>
               {workforceData.occupations.map(occ => (
-                <option key={occ} value={occ}>{occ}</option>
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
               ))}
-            </select>
-            <p className="text-sm text-gray-600 mt-2">
-              Showing one occupation at a time for clearer visualization and legend readability
-            </p>
+            </div>
           </div>
           
           {/* Only render when changes are applied or scenario is loaded */}
@@ -1304,28 +1310,34 @@ function App() {
             )}
           </div>
           
-          {/* Single occupation selector for cleaner visualization */}
+          {/* Add occupation filter to the Supply vs Demand Analysis chart */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Select Occupation to View</h3>
-            <select 
-              value={selectedOccupations.includes('All') ? 'All' : selectedOccupations[0] || 'All'}
-              onChange={(e) => {
-                if (e.target.value === 'All') {
-                  setSelectedOccupations(['All']);
-                } else {
-                  setSelectedOccupations([e.target.value]);
-                }
-              }}
-              className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Occupations</option>
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Occupations
+              </button>
               {workforceData.occupations.map(occ => (
-                <option key={occ} value={occ}>{occ}</option>
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
               ))}
-            </select>
-            <p className="text-sm text-gray-600 mt-2">
-              Single occupation view reduces legend complexity for Supply/Demand analysis
-            </p>
+            </div>
           </div>
           
           {/* Only render when changes are applied or scenario is loaded */}
@@ -1356,28 +1368,34 @@ function App() {
             )}
           </div>
           
-          {/* Single occupation selector for cleaner visualization */}
+          {/* Add occupation filter to the Parameter Impact Analysis chart */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Select Occupation to View</h3>
-            <select 
-              value={selectedOccupations.includes('All') ? 'All' : selectedOccupations[0] || 'All'}
-              onChange={(e) => {
-                if (e.target.value === 'All') {
-                  setSelectedOccupations(['All']);
-                } else {
-                  setSelectedOccupations([e.target.value]);
-                }
-              }}
-              className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Occupations</option>
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Occupations
+              </button>
               {workforceData.occupations.map(occ => (
-                <option key={occ} value={occ}>{occ}</option>
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
               ))}
-            </select>
-            <p className="text-sm text-gray-600 mt-2">
-              Parameter impact analysis focused on one occupation for clarity
-            </p>
+            </div>
           </div>
           
           {/* Only render when changes are applied or scenario is loaded */}
@@ -1769,17 +1787,9 @@ function App() {
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               verticalAlign="bottom" 
-              height={selectedOccupations.length > 3 ? 72 : 36}
+              height={36}
               iconType="line"
-              wrapperStyle={{ 
-                paddingTop: '20px',
-                fontSize: '12px',
-                lineHeight: '1.2'
-              }}
-              itemStyle={{
-                marginRight: '15px',
-                marginBottom: '5px'
-              }}
+              wrapperStyle={{ paddingTop: '20px' }}
             />
             {selectedOccupations.map(occ => (
               <Line
@@ -2043,16 +2053,8 @@ function App() {
             <Tooltip content={<CustomTooltip />} />
             <Legend 
               verticalAlign="bottom" 
-              height={selectedOccupations.length > 2 ? 90 : 60}
-              wrapperStyle={{ 
-                paddingTop: '20px',
-                fontSize: '11px',
-                lineHeight: '1.3'
-              }}
-              itemStyle={{
-                marginRight: '12px',
-                marginBottom: '4px'
-              }}
+              height={60}
+              wrapperStyle={{ paddingTop: '20px' }}
             />
             {selectedOccupations.map(occ => [
               <Line
@@ -2081,9 +2083,9 @@ function App() {
           </LineChart>
         </ResponsiveContainer>
         
-        {/* Legend explanation - positioned closer to chart legend */}
-        <div className="mt-2 flex justify-center">
-          <div className="bg-gray-50 rounded-lg p-2 text-xs text-gray-600">
+        {/* Legend explanation */}
+        <div className="mt-4 flex justify-center">
+          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1">
                 <div className="w-4 h-0.5 bg-gray-600"></div>
