@@ -2081,9 +2081,9 @@ function App() {
           </LineChart>
         </ResponsiveContainer>
         
-        {/* Legend explanation */}
-        <div className="mt-4 flex justify-center">
-          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+        {/* Legend explanation - positioned closer to chart legend */}
+        <div className="mt-2 flex justify-center">
+          <div className="bg-gray-50 rounded-lg p-2 text-xs text-gray-600">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1">
                 <div className="w-4 h-0.5 bg-gray-600"></div>
