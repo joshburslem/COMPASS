@@ -227,7 +227,8 @@ function App() {
           name: 'Baseline',
           parameters: JSON.parse(JSON.stringify(baselineParams)) // Deep copy for safety
         }
-      }
+      },
+      dataVersion: 1 // Add version to force re-renders when data changes
     };
   });
 
@@ -987,7 +988,7 @@ function App() {
         {/* Parameter Content */}
         <div className="mb-6">
           {activeParameterTab === 'supply' && (
-            <div className="space-y-6">
+            <div className="space-y-6" key={`supply-${workforceData.dataVersion}`}>
               {/* Year Selector for Supply Parameters */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">Supply Parameters</h3>
@@ -1005,6 +1006,7 @@ function App() {
                 </div>
               </div>
               <ParameterGridWithBaseline 
+                key={`supply-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Current Supply (FTE)"
                 parameterType="supply"
                 parameters={editingParameters.supply}
@@ -1017,7 +1019,7 @@ function App() {
           )}
 
           {activeParameterTab === 'inflows' && (
-            <div className="space-y-6">
+            <div className="space-y-6" key={`inflows-${workforceData.dataVersion}`}>
               {/* Year Selector for Inflow Parameters */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">Workforce Inflow Parameters</h3>
@@ -1035,6 +1037,7 @@ function App() {
                 </div>
               </div>
               <ParameterGridWithBaseline 
+                key={`educational-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Educational Inflow (Annual Graduates)"
                 parameterType="educationalInflow"
                 parameters={editingParameters.educationalInflow}
@@ -1044,6 +1047,7 @@ function App() {
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
+                key={`international-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="International Migrants (Annual)"
                 parameterType="internationalMigrants"
                 parameters={editingParameters.internationalMigrants}
@@ -1053,6 +1057,7 @@ function App() {
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
+                key={`domestic-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Domestic Migrants (Annual)"
                 parameterType="domesticMigrants"
                 parameters={editingParameters.domesticMigrants}
@@ -1062,6 +1067,7 @@ function App() {
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
+                key={`reentrants-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Re-Entrants (Annual)"
                 parameterType="reEntrants"
                 parameters={editingParameters.reEntrants}
@@ -1074,7 +1080,7 @@ function App() {
           )}
 
           {activeParameterTab === 'outflows' && (
-            <div className="space-y-6">
+            <div className="space-y-6" key={`outflows-${workforceData.dataVersion}`}>
               {/* Year Selector for Outflow Parameters */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">Retirement & Attrition Parameters</h3>
@@ -1092,6 +1098,7 @@ function App() {
                 </div>
               </div>
               <ParameterGridWithBaseline 
+                key={`retirement-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Retirement Rate (%)"
                 parameterType="retirementRate"
                 parameters={editingParameters.retirementRate}
@@ -1102,6 +1109,7 @@ function App() {
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
+                key={`attrition-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Attrition Rate (%)"
                 parameterType="attritionRate"
                 parameters={editingParameters.attritionRate}
@@ -1115,7 +1123,7 @@ function App() {
           )}
 
           {activeParameterTab === 'demand' && (
-            <div className="space-y-6">
+            <div className="space-y-6" key={`demand-${workforceData.dataVersion}`}>
               {/* Year Selector for Demand Parameters */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-800">Demand Driver Parameters</h3>
@@ -1133,6 +1141,7 @@ function App() {
                 </div>
               </div>
               <DemandParameterGrid 
+                key={`population-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Population Growth Rate (% per year)"
                 parameterType="populationGrowth"
                 parameters={editingParameters.populationGrowth}
@@ -1142,6 +1151,7 @@ function App() {
                 selectedParameterYear={selectedParameterYear}
               />
               <DemandParameterGrid 
+                key={`health-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Health Status Change (% per year)"
                 parameterType="healthStatusChange"
                 parameters={editingParameters.healthStatusChange}
@@ -1151,6 +1161,7 @@ function App() {
                 selectedParameterYear={selectedParameterYear}
               />
               <DemandParameterGrid 
+                key={`service-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
                 title="Service Utilization Change (% per year)"
                 parameterType="serviceUtilization"
                 parameters={editingParameters.serviceUtilization}
@@ -2167,7 +2178,14 @@ function App() {
           // Update the app state with new baseline data
           setWorkforceData(prev => ({
             ...prev,
-            baselineParameters: newBaselineParameters
+            baselineParameters: newBaselineParameters,
+            scenarios: {
+              baseline: {
+                name: 'Baseline',
+                parameters: JSON.parse(JSON.stringify(newBaselineParameters))
+              }
+            },
+            dataVersion: prev.dataVersion + 1 // Increment to force re-renders
           }));
 
           // Update executive data with new projections
@@ -2180,10 +2198,13 @@ function App() {
           // Reset editing parameters to use new baseline
           setEditingParameters(JSON.parse(JSON.stringify(newBaselineParameters)));
           
-          // Clear any existing scenarios
+          // Clear any existing scenarios and reset state
           setScenarios([]);
           setActiveScenario('baseline');
           setUnsavedChanges(false);
+          setPendingChanges({});
+          setVisualizationsNeedUpdate(false);
+          setLastAppliedProjections(null);
           setIsUsingUploadedData(true);
 
           setUploadStatus({ 
