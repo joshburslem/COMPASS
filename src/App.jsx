@@ -1159,6 +1159,11 @@ function App() {
             <ScenarioManagement
               scenarios={scenarios}
               activeScenario={activeScenario}
+              workforceData={workforceData}
+              executiveData={executiveData}
+              selectedOccupations={selectedOccupations}
+              toggleOccupation={toggleOccupation}
+              getFilteredOccupations={getFilteredOccupations}
               onCreateScenario={() => setShowScenarioModal(true)}
               onSelectScenario={(scenarioId) => {
                 try {
@@ -1517,11 +1522,52 @@ function App() {
     }
   }, [scenarios, workforceData, executiveData]);
 
-  const ScenarioManagement = ({ scenarios, activeScenario, onCreateScenario, onSelectScenario }) => {
+  const ScenarioManagement = ({ 
+    scenarios, 
+    activeScenario, 
+    workforceData, 
+    executiveData, 
+    selectedOccupations, 
+    toggleOccupation, 
+    getFilteredOccupations, 
+    onCreateScenario, 
+    onSelectScenario 
+  }) => {
     const [showExportInfo, setShowExportInfo] = React.useState(false);
+    const [selectedScenariosForComparison, setSelectedScenariosForComparison] = React.useState(['baseline']);
+    const [showComparison, setShowComparison] = React.useState(false);
+
+    const toggleScenarioForComparison = (scenarioId) => {
+      setSelectedScenariosForComparison(prev => {
+        if (prev.includes(scenarioId)) {
+          return prev.filter(id => id !== scenarioId);
+        } else {
+          return [...prev, scenarioId];
+        }
+      });
+    };
+
+    const getScenarioProjections = (scenarioId) => {
+      if (scenarioId === 'baseline') {
+        return executiveData.projections;
+      }
+      const scenario = scenarios.find(s => s.id === scenarioId);
+      return scenario?.projections || executiveData.projections;
+    };
+
+    const getScenarioName = (scenarioId) => {
+      if (scenarioId === 'baseline') return 'Baseline';
+      const scenario = scenarios.find(s => s.id === scenarioId);
+      return scenario?.name || 'Unknown';
+    };
+
+    const availableScenarios = [
+      { id: 'baseline', name: 'Baseline' },
+      ...scenarios.filter(s => s.id !== 'working').map(s => ({ id: s.id, name: s.name }))
+    ];
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Active Scenario</label>
@@ -1594,53 +1640,155 @@ function App() {
           </div>
         </div>
 
-      {activeScenario === 'working' && (
-        <div className="p-4 bg-orange-50 rounded-lg">
-          <p className="text-sm text-orange-800">
-            <strong>Working Changes:</strong> You have applied parameter changes that are now visible in the visualizations. 
-            Click "Save as New Scenario" above to permanently save these changes, or load a different scenario to discard them.
-          </p>
-        </div>
-      )}
-
-      {scenarios.length > 0 && (
-        <div className="mt-6">
-          <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
-          <div className="space-y-2">
-            {scenarios.map(scenario => (
-              <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <p className="font-medium">{scenario.name}</p>
-                  <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
-                  <p className="text-xs text-gray-500">Created: {new Date(scenario.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => onSelectScenario(scenario.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded"
-                  >
-                    Load
-                  </button>
-                  <button 
-                    onClick={() => exportScenarioToExcel(scenario.id)}
-                    className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
-                    title="Export this scenario to Excel"
-                  >
-                    Export
-                  </button>
-                  <button className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+        {activeScenario === 'working' && (
+          <div className="p-4 bg-orange-50 rounded-lg">
+            <p className="text-sm text-orange-800">
+              <strong>Working Changes:</strong> You have applied parameter changes that are now visible in the visualizations. 
+              Click "Save as New Scenario" above to permanently save these changes, or load a different scenario to discard them.
+            </p>
           </div>
-        </div>
-      )}
+        )}
 
+        {/* Scenario Comparison Section */}
+        {availableScenarios.length > 1 && (
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h5 className="font-medium text-gray-800">Scenario Comparison</h5>
+              <button
+                onClick={() => setShowComparison(!showComparison)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 text-sm"
+              >
+                {showComparison ? 'Hide Comparison' : 'Compare Scenarios'}
+              </button>
+            </div>
+
+            {showComparison && (
+              <div className="space-y-6">
+                {/* Scenario Selection */}
+                <div>
+                  <h6 className="text-sm font-medium text-gray-700 mb-3">Select Scenarios to Compare</h6>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {availableScenarios.map(scenario => (
+                      <label key={scenario.id} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedScenariosForComparison.includes(scenario.id)}
+                          onChange={() => toggleScenarioForComparison(scenario.id)}
+                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-sm text-gray-700">{scenario.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedScenariosForComparison.length > 4 && (
+                    <p className="text-xs text-orange-600 mt-2">
+                      Note: Too many scenarios may make the chart difficult to read. Consider selecting fewer scenarios.
+                    </p>
+                  )}
+                </div>
+
+                {/* Occupation Filter */}
+                <div>
+                  <h6 className="text-sm font-medium text-gray-700 mb-3">Select Occupations to View</h6>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => toggleOccupation('All')}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        selectedOccupations.includes('All')
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      All Occupations
+                    </button>
+                    {workforceData.occupations.map(occ => (
+                      <button
+                        key={occ}
+                        onClick={() => toggleOccupation(occ)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                          selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {occ}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Comparison Charts */}
+                {selectedScenariosForComparison.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="bg-white border rounded-lg p-6">
+                      <h6 className="text-lg font-semibold mb-4">Workforce Gap Comparison</h6>
+                      <ScenarioComparisonChart
+                        scenarios={selectedScenariosForComparison.map(id => ({
+                          id,
+                          name: getScenarioName(id),
+                          projections: getScenarioProjections(id)
+                        }))}
+                        selectedOccupations={getFilteredOccupations()}
+                        chartType="gap"
+                      />
+                    </div>
+
+                    <div className="bg-white border rounded-lg p-6">
+                      <h6 className="text-lg font-semibold mb-4">Supply vs Demand Comparison</h6>
+                      <ScenarioComparisonChart
+                        scenarios={selectedScenariosForComparison.map(id => ({
+                          id,
+                          name: getScenarioName(id),
+                          projections: getScenarioProjections(id)
+                        }))}
+                        selectedOccupations={getFilteredOccupations()}
+                        chartType="supply-demand"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {scenarios.length > 0 && (
+          <div className="border-t pt-6">
+            <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
+            <div className="space-y-2">
+              {scenarios.map(scenario => (
+                <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium">{scenario.name}</p>
+                    <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
+                    <p className="text-xs text-gray-500">Created: {new Date(scenario.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button 
+                      onClick={() => onSelectScenario(scenario.id)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded"
+                    >
+                      Load
+                    </button>
+                    <button 
+                      onClick={() => exportScenarioToExcel(scenario.id)}
+                      className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
+                      title="Export this scenario to Excel"
+                    >
+                      Export
+                    </button>
+                    <button className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-  );
-};
+    );
+  };
 
   const ParameterImpactChart = ({ parameters }) => {
     // Calculate impact of parameter changes
@@ -2125,6 +2273,202 @@ function App() {
       </div>
     </div>
   );
+
+  const ScenarioComparisonChart = ({ scenarios, selectedOccupations, chartType }) => {
+    if (!scenarios || scenarios.length === 0) {
+      return <div className="text-gray-500 text-center py-8">No scenarios selected for comparison</div>;
+    }
+
+    const years = Object.keys(scenarios[0].projections).sort();
+    
+    if (chartType === 'gap') {
+      // Gap comparison chart
+      const chartData = years.map(year => {
+        const yearData = { year };
+        
+        selectedOccupations.forEach(occ => {
+          scenarios.forEach(scenario => {
+            const scenarioData = scenario.projections[year][occ];
+            const key = `${scenario.name}_${occ}`;
+            yearData[key] = scenarioData?.gap || 0;
+          });
+        });
+        
+        return yearData;
+      });
+
+      const colors = [
+        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
+        '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'
+      ];
+
+      const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+          return (
+            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-sm">
+              <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
+              {payload.map((entry, index) => {
+                const [scenarioName, occupation] = entry.dataKey.split('_');
+                return (
+                  <p key={index} className="text-sm" style={{ color: entry.color }}>
+                    {`${scenarioName} - ${occupation}: ${entry.value.toLocaleString()} FTE gap`}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        }
+        return null;
+      };
+
+      return (
+        <div className="h-96 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis 
+                dataKey="year" 
+                stroke="#6B7280"
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+              />
+              <YAxis 
+                stroke="#6B7280"
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+                label={{ value: 'Workforce Gap (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                verticalAlign="bottom" 
+                height={60}
+                wrapperStyle={{ 
+                  paddingTop: '20px',
+                  fontSize: '12px',
+                  lineHeight: '1.2'
+                }}
+                iconSize={14}
+              />
+              {scenarios.map((scenario, scenarioIndex) =>
+                selectedOccupations.map((occ, occIndex) => (
+                  <Line
+                    key={`${scenario.id}_${occ}`}
+                    type="monotone"
+                    dataKey={`${scenario.name}_${occ}`}
+                    stroke={colors[(scenarioIndex * selectedOccupations.length + occIndex) % colors.length]}
+                    strokeWidth={2}
+                    strokeDasharray={scenario.name === 'Baseline' ? '0' : '5 5'}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    name={`${scenario.name} - ${occ}`}
+                  />
+                ))
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    } else if (chartType === 'supply-demand') {
+      // Supply vs Demand comparison
+      const chartData = years.map(year => {
+        const yearData = { year };
+        
+        scenarios.forEach(scenario => {
+          const totalSupply = selectedOccupations.reduce((sum, occ) => {
+            return sum + (scenario.projections[year][occ]?.supply || 0);
+          }, 0);
+          
+          const totalDemand = selectedOccupations.reduce((sum, occ) => {
+            return sum + (scenario.projections[year][occ]?.demand || 0);
+          }, 0);
+          
+          yearData[`${scenario.name}_supply`] = totalSupply;
+          yearData[`${scenario.name}_demand`] = totalDemand;
+        });
+        
+        return yearData;
+      });
+
+      const colors = {
+        supply: '#10B981',
+        demand: '#EF4444'
+      };
+
+      const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+          return (
+            <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-sm">
+              <p className="font-semibold text-gray-800 mb-2">{`Year: ${label}`}</p>
+              {payload.map((entry, index) => {
+                const [scenarioName, type] = entry.dataKey.split('_');
+                return (
+                  <p key={index} className="text-sm" style={{ color: entry.color }}>
+                    {`${scenarioName} ${type}: ${entry.value.toLocaleString()} FTE`}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        }
+        return null;
+      };
+
+      return (
+        <div className="h-96 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis 
+                dataKey="year" 
+                stroke="#6B7280"
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+              />
+              <YAxis 
+                stroke="#6B7280"
+                tick={{ fill: '#6B7280', fontSize: 12 }}
+                label={{ value: 'Total Workforce (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend 
+                verticalAlign="bottom" 
+                height={60}
+                wrapperStyle={{ 
+                  paddingTop: '20px',
+                  fontSize: '12px',
+                  lineHeight: '1.2'
+                }}
+                iconSize={14}
+              />
+              {scenarios.map(scenario => [
+                <Line
+                  key={`${scenario.id}_supply`}
+                  type="monotone"
+                  dataKey={`${scenario.name}_supply`}
+                  stroke={colors.supply}
+                  strokeWidth={2}
+                  strokeDasharray={scenario.name === 'Baseline' ? '0' : '5 5'}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name={`${scenario.name} Supply`}
+                />,
+                <Line
+                  key={`${scenario.id}_demand`}
+                  type="monotone"
+                  dataKey={`${scenario.name}_demand`}
+                  stroke={colors.demand}
+                  strokeWidth={2}
+                  strokeDasharray={scenario.name === 'Baseline' ? '0' : '8 4'}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name={`${scenario.name} Demand`}
+                />
+              ]).flat()}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   const DataImportModal = () => {
     const [selectedFile, setSelectedFile] = React.useState(null);
