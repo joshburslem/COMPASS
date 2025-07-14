@@ -1,0 +1,22 @@
+Workforce Planning Model - Demand:
+To calculate and simulate the projected need for primary care visits, the following data is required. 
+Population - Population segmented by age and gender demographics and projected over a 10 year horizon. Gender is segmented by Male and Female. Age is segmented by bands (0-18, 19-64, 65-84, 85+). 
+Health Status - Population demographics segmented into Health Status (Health Newborn, Major Acute, Major Cancer, Major Chronic, Major Mental Health, Major Newborn, Minor Acute, Minor Chronic, Moderate Acute, Moderate Chronic, Obstetrics, Other Cancer, Other Mental Health, Palliative, Non-users, and Users with no health conditions). Health Status is a health category each person in the population demographics falls into based on their most severe condition. 
+Level of Service Predicted/Level of Service Observed - Estimated number of primary care visits required based on health status and population demographic (sourced from the CIHI Population Grouper Software) and the actual number of primary care visits performed for the population in each health status and population demographic. 
+
+Workforce Planning Model - Supply:
+The supply of each occupation is determined by the following operation, and is used to project the occupation supply over the forecasting period (2024 - 2034):
+Previous Year Headcount + [New Grad Entrants + Re-Entrants + International Migrants + Domestic Migrants] - [Retirements + Emigrants] = Current Year Headcount 
+New Grad Entrants - This is calculated using the following variables: training program length, number of training seats, proportion of students leaving before graduation and proportion of students getting licensed after graduation. 
+Re-Entrants: Those who left the occupation workforce supply and then reentered
+Domestic and International Migrants: Total number of people coming into the occupation supply from within Canada or elsewhere around the world.
+Retirements: Those who are leaving the workforce supply because of retirement
+Emigration: Those who are leaving the workforce supply to work elsewhere 
+
+Workforce Planning Model - Gap
+The model measures the workforce gap using the following calculations: 
+Physicians: [Total Number of Visits Predicted * Proportion of Visits by Physician] / [[Total Number of Visits Observed* Proportion of Visits by Physician] / Total Number of Physician FTEs]
+Nurse Practitioners: [Total Number of Visits Predicted * Proportion of Visits by Nurse Practitioner] / [[Total Number of Visits Observed* Proportion of Visits by Nurse Practitioner] / Total Number of Nurse Practitioner FTEs]
+Registered Nurses: Total Number of Visits Predicted / [Total Number of Visits Observed / Total Number of Registered Nurse FTEs]
+Licensed Practical Nurses: Total Number of Visits Predicted / [Total Number of Visits Observed / Total Number of Licensed Practical Nurse FTEs]
+Medical Office Assistants: Total Number of Visits Predicted / [Total Number of Visits Observed / Total Number of Medical Office Assistants FTEs]
