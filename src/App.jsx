@@ -766,11 +766,7 @@ function App() {
 
         {/* Year Selector */}
         <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Parameter Configuration</h3>
-              <p className="text-sm text-gray-600">Edit parameters for the selected year</p>
-            </div>
+          <div className="flex items-center justify-end">
             <div className="flex items-center space-x-3">
               <label className="text-sm font-medium text-gray-700">Editing Year:</label>
               <select 
