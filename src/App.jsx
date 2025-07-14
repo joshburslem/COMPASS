@@ -761,35 +761,7 @@ function App() {
           </div>
         </div>
 
-        {/* Occupation Filter */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => toggleOccupation('All')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                selectedOccupations.includes('All')
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              All Occupations
-            </button>
-            {workforceData.occupations.map(occ => (
-              <button
-                key={occ}
-                onClick={() => toggleOccupation(occ)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                {occ}
-              </button>
-            ))}
-          </div>
-        </div>
+
 
         {/* Year Selector */}
         <div className="mb-6">
@@ -1030,6 +1002,37 @@ function App() {
               </span>
             )}
           </div>
+          
+          {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
+            </div>
+          </div>
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
@@ -1055,6 +1058,37 @@ function App() {
               </span>
             )}
           </div>
+          
+          {/* Add occupation filter to the Supply vs Demand Analysis chart */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
+            </div>
+          </div>
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart data={getCurrentScenarioProjections()} />
@@ -1079,6 +1113,37 @@ function App() {
               </span>
             )}
           </div>
+          
+          {/* Add occupation filter to the Parameter Impact Analysis chart */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleOccupation('All')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedOccupations.includes('All')
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Occupations
+              </button>
+              {workforceData.occupations.map(occ => (
+                <button
+                  key={occ}
+                  onClick={() => toggleOccupation(occ)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedOccupations.includes(occ) && !selectedOccupations.includes('All')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {occ}
+                </button>
+              ))}
+            </div>
+          </div>
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <ParameterImpactChart parameters={
@@ -1104,7 +1169,7 @@ function App() {
     </div>
   );
 
-  
+
 
   const exportScenarioToExcel = React.useCallback((scenarioId) => {
     try {
@@ -1113,7 +1178,7 @@ function App() {
         handleExcelExport(window.XLSX, scenarioId);
         return;
       }
-      
+
       // Dynamically import xlsx to avoid build issues
       import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs').then((XLSX) => {
         window.XLSX = XLSX; // Cache for HMR
@@ -1131,7 +1196,7 @@ function App() {
   const handleExcelExport = React.useCallback((XLSX, scenarioId) => {
     try {
         let scenarioData, scenarioName;
-      
+
       if (scenarioId === 'baseline') {
         scenarioData = {
           parameters: workforceData.baselineParameters,
@@ -1204,7 +1269,7 @@ function App() {
 
       parameterTypes.forEach(paramType => {
         const paramData = [['Year', ...workforceData.occupations]];
-        
+
         Object.keys(scenarioData.parameters[paramType.key] || {}).sort().forEach(year => {
           const yearParams = scenarioData.parameters[paramType.key][year] || {};
           const row = [year];
@@ -1238,7 +1303,7 @@ function App() {
       // Generate filename and download
       const filename = `${scenarioName.replace(/[^a-z0-9]/gi, '_')}_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, filename);
-      
+
       console.log(`Exported scenario: ${scenarioName}`);
     } catch (error) {
       console.error('Error in Excel export:', error);
@@ -1289,7 +1354,7 @@ function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </button>
-                
+
                 {showExportInfo && (
                   <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-200 rounded-md shadow-lg z-50 p-4">
                     <div className="flex justify-between items-start mb-2">
