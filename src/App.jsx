@@ -774,8 +774,7 @@ function App() {
                 onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
                 className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {Array.from({length: 11}, (_, i) =>```python
- 2024 + i).map(year => (
+                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
@@ -1000,7 +999,7 @@ function App() {
               </span>
             )}
           </div>
-
+          
           {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1030,7 +1029,7 @@ function App() {
               ))}
             </div>
           </div>
-
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
@@ -1056,7 +1055,7 @@ function App() {
               </span>
             )}
           </div>
-
+          
           {/* Add occupation filter to the Supply vs Demand Analysis chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1086,7 +1085,7 @@ function App() {
               ))}
             </div>
           </div>
-
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart 
@@ -1114,7 +1113,7 @@ function App() {
               </span>
             )}
           </div>
-
+          
           {/* Add occupation filter to the Parameter Impact Analysis chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1144,7 +1143,7 @@ function App() {
               ))}
             </div>
           </div>
-
+          
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <ParameterImpactChart parameters={
@@ -1528,7 +1527,6 @@ function App() {
             />
             <YAxis 
               stroke="#6B7280"
-```python
               tick={{ fill: '#6B7280', fontSize: 12 }}
               label={{ value: 'Workforce Gap (FTE)', angle: -90, position: 'insideLeft', style: { fill: '#4B5563' } }}
             />
@@ -1708,7 +1706,7 @@ function App() {
     const years = Object.keys(data).sort();
     const chartData = years.map(year => {
       const yearData = { year };
-
+      
       // Calculate supply and demand for each selected occupation
       selectedOccupations.forEach(occ => {
         const occData = data[year][occ] || { supply: 0, demand: 0 };
@@ -1716,7 +1714,7 @@ function App() {
         yearData[`${occ}_demand`] = occData.demand;
         yearData[`${occ}_gap`] = occData.demand - occData.supply;
       });
-
+      
       return yearData;
     });
 
@@ -1830,7 +1828,7 @@ function App() {
             ]).flat()}
           </LineChart>
         </ResponsiveContainer>
-
+        
         {/* Legend explanation */}
         <div className="mt-4 flex justify-center">
           <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
