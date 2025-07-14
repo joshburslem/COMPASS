@@ -2024,12 +2024,55 @@ function App() {
                 lineHeight: '1.2'
               }}
               iconSize={14}
-              formatter={(value) => {
-                // Truncate long occupation names for legend display
-                if (value.length > 20) {
-                  return value.substring(0, 18) + '...';
-                }
-                return value;
+              formatter={(value, entry) => {
+                // Extract occupation name from the dataKey (remove _supply or _demand suffix)
+                const occupation = value.replace(/_supply|_demand/, '');
+                return occupation;
+              }}
+              content={(props) => {
+                const { payload } = props;
+                if (!payload || !payload.length) return null;
+
+                // Group by occupation and get unique occupations
+                const occupations = [...new Set(payload.map(item => 
+                  item.dataKey.replace(/_supply|_demand/, '')
+                ))];
+
+                return (
+                  <div className="flex flex-col items-center space-y-2 mt-4">
+                    {/* Occupation colors */}
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {occupations.map(occ => (
+                        <div key={occ} className="flex items-center space-x-1">
+                          <div 
+                            className="w-3 h-3 rounded"
+                            style={{ backgroundColor: colors[occ] || '#6B7280' }}
+                          ></div>
+                          <span className="text-xs">
+                            {occ.length > 15 ? occ.substring(0, 13) + '...' : occ}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Line type legend */}
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-4 h-0.5 bg-gray-600"></div>
+                        <span className="text-xs">Supply</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div 
+                          className="w-4 h-0.5 bg-gray-600" 
+                          style={{ 
+                            backgroundImage: 'repeating-linear-gradient(to right, #6B7280 0, #6B7280 4px, transparent 4px, transparent 8px)' 
+                          }}
+                        ></div>
+                        <span className="text-xs">Demand</span>
+                      </div>
+                    </div>
+                  </div>
+                );
               }}
             />
             {selectedOccupations.map(occ => [
