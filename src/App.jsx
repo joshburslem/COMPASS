@@ -2797,15 +2797,6 @@ function App() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <select 
-                value={selectedYear} 
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-300 rounded-md px-3 py-2"
-              >
-                {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
               <button 
                 onClick={() => setShowDataImport(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
