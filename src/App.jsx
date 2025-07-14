@@ -786,8 +786,7 @@ function App() {
     if (selectedOccupations.includes('All')) {
       return workforceData.occupations;
     }
-    return```text
-selectedOccupations;
+    return selectedOccupations;
   };
 
   const ExecutiveView = () => (
