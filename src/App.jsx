@@ -891,12 +891,24 @@ function App() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-xl font-semibold mb-4">Critical Workforce Insights</h3>
-        <WorkforceInsights 
-          data={executiveData.projections}
-          selectedOccupations={getFilteredOccupations()}
-        />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">Critical Workforce Insights</h3>
+          <WorkforceInsights 
+            data={executiveData.projections}
+            selectedOccupations={getFilteredOccupations()}
+          />
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">How Numbers Are Calculated</h3>
+          <CalculationBreakdown 
+            data={executiveData.projections}
+            parameters={workforceData.baselineParameters}
+            selectedOccupations={getFilteredOccupations()}
+            year={selectedYear}
+          />
+        </div>
       </div>
     </div>
   );
@@ -1416,6 +1428,18 @@ function App() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-xl font-semibold mb-4">How Numbers Are Calculated</h3>
+          <CalculationBreakdown 
+            data={getCurrentScenarioProjections()}
+            parameters={activeScenario === 'baseline' 
+              ? workforceData.baselineParameters 
+              : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters}
+            selectedOccupations={getFilteredOccupations()}
+            year={selectedYear}
+          />
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Population Health Segments</h3>
           <PopulationSegmentAnalysis />
         </div>
@@ -1884,6 +1908,239 @@ function App() {
                   <span>Demand: {values.demand}</span>
                 </div>
               </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const CalculationBreakdown = ({ data, parameters, selectedOccupations, year }) => {
+    const [expandedOccupation, setExpandedOccupation] = React.useState(null);
+
+    const getCalculationDetails = (occupation, year) => {
+      const yearData = data[year]?.[occupation];
+      const yearParams = parameters || workforceData.baselineParameters;
+      
+      if (!yearData || !yearParams) return null;
+
+      // Supply calculation breakdown
+      const baseSupply = yearParams.supply?.[year]?.[occupation] || 0;
+      const educationalInflow = yearParams.educationalInflow?.[year]?.[occupation] || 0;
+      const internationalMigrants = yearParams.internationalMigrants?.[year]?.[occupation] || 0;
+      const domesticMigrants = yearParams.domesticMigrants?.[year]?.[occupation] || 0;
+      const reEntrants = yearParams.reEntrants?.[year]?.[occupation] || 0;
+      const retirementRate = yearParams.retirementRate?.[year]?.[occupation] || 0;
+      const attritionRate = yearParams.attritionRate?.[year]?.[occupation] || 0;
+
+      const totalInflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
+      const retirementOutflow = Math.round(baseSupply * retirementRate);
+      const attritionOutflow = Math.round(baseSupply * attritionRate);
+      const totalOutflows = retirementOutflow + attritionOutflow;
+
+      // Demand calculation factors
+      const populationGrowth = yearParams.populationGrowth?.[year] || {};
+      const avgPopGrowth = Object.values(populationGrowth).length > 0 
+        ? Object.values(populationGrowth).reduce((a, b) => a + b, 0) / Object.values(populationGrowth).length 
+        : 0.02;
+
+      const healthStatusChange = yearParams.healthStatusChange?.[year] || {};
+      const avgHealthChange = Object.values(healthStatusChange).length > 0
+        ? Object.values(healthStatusChange).reduce((a, b) => a + b, 0) / Object.values(healthStatusChange).length
+        : 0.02;
+
+      const serviceUtilization = yearParams.serviceUtilization?.[year] || {};
+      const avgServiceChange = Object.values(serviceUtilization).length > 0
+        ? Object.values(serviceUtilization).reduce((a, b) => a + b, 0) / Object.values(serviceUtilization).length
+        : 0.03;
+
+      return {
+        supply: {
+          baseSupply: baseSupply,
+          inflows: {
+            educational: educationalInflow,
+            international: internationalMigrants,
+            domestic: domesticMigrants,
+            reEntrants: reEntrants,
+            total: totalInflows
+          },
+          outflows: {
+            retirement: retirementOutflow,
+            attrition: attritionOutflow,
+            total: totalOutflows
+          },
+          netSupply: Math.max(0, baseSupply + totalInflows - totalOutflows),
+          actualSupply: yearData.supply
+        },
+        demand: {
+          baseDemand: Math.round(baseSupply * 1.1), // 10% shortage baseline
+          populationFactor: avgPopGrowth,
+          healthFactor: avgHealthChange,
+          serviceFactor: avgServiceChange,
+          yearMultiplier: 1 + (year - 2024) * 0.02,
+          actualDemand: yearData.demand
+        },
+        gap: {
+          calculated: yearData.demand - yearData.supply,
+          actual: yearData.gap
+        }
+      };
+    };
+
+    return (
+      <div className="space-y-3">
+        <h4 className="font-semibold text-gray-800 mb-3">Calculation Breakdown ({year})</h4>
+        {selectedOccupations.map(occupation => {
+          const details = getCalculationDetails(occupation, year);
+          if (!details) return null;
+
+          const isExpanded = expandedOccupation === occupation;
+
+          return (
+            <div key={occupation} className="border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setExpandedOccupation(isExpanded ? null : occupation)}
+                className="w-full px-4 py-3 text-left bg-gray-50 hover:bg-gray-100 rounded-t-lg flex justify-between items-center"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="font-medium">{occupation}</span>
+                  <div className="flex space-x-4 text-sm">
+                    <span className="text-blue-600">Supply: {details.supply.actualSupply}</span>
+                    <span className="text-orange-600">Demand: {details.demand.actualDemand}</span>
+                    <span className={`font-semibold ${details.gap.actual > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      Gap: {details.gap.actual > 0 ? '+' : ''}{details.gap.actual}
+                    </span>
+                  </div>
+                </div>
+                <svg 
+                  className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isExpanded && (
+                <div className="px-4 py-4 border-t border-gray-200 bg-white rounded-b-lg">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Supply Calculation */}
+                    <div>
+                      <h5 className="font-medium text-blue-800 mb-3">Supply Calculation</h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Base Supply:</span>
+                          <span className="font-medium">{details.supply.baseSupply.toLocaleString()}</span>
+                        </div>
+                        
+                        <div className="border-t pt-2">
+                          <div className="font-medium text-green-700 mb-1">+ Inflows:</div>
+                          <div className="ml-3 space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Educational Graduates:</span>
+                              <span>+{details.supply.inflows.educational}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">International Migrants:</span>
+                              <span>+{details.supply.inflows.international}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Domestic Migrants:</span>
+                              <span>+{details.supply.inflows.domestic}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Re-Entrants:</span>
+                              <span>+{details.supply.inflows.reEntrants}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-green-700">
+                              <span>Total Inflows:</span>
+                              <span>+{details.supply.inflows.total}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-2">
+                          <div className="font-medium text-red-700 mb-1">- Outflows:</div>
+                          <div className="ml-3 space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Retirements:</span>
+                              <span>-{details.supply.outflows.retirement}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Attrition:</span>
+                              <span>-{details.supply.outflows.attrition}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-red-700">
+                              <span>Total Outflows:</span>
+                              <span>-{details.supply.outflows.total}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-2 bg-blue-50 px-2 py-1 rounded">
+                          <div className="flex justify-between font-semibold text-blue-800">
+                            <span>Final Supply:</span>
+                            <span>{details.supply.actualSupply.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Demand Calculation */}
+                    <div>
+                      <h5 className="font-medium text-orange-800 mb-3">Demand Calculation</h5>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Base Demand (110% of supply):</span>
+                          <span className="font-medium">{details.demand.baseDemand.toLocaleString()}</span>
+                        </div>
+                        
+                        <div className="border-t pt-2">
+                          <div className="font-medium text-orange-700 mb-1">Growth Factors:</div>
+                          <div className="ml-3 space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Population Growth:</span>
+                              <span>{(details.demand.populationFactor * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Health Status Change:</span>
+                              <span>{(details.demand.healthFactor * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Service Utilization:</span>
+                              <span>{(details.demand.serviceFactor * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Year Multiplier ({year}):</span>
+                              <span>{details.demand.yearMultiplier.toFixed(3)}x</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-2 bg-orange-50 px-2 py-1 rounded">
+                          <div className="flex justify-between font-semibold text-orange-800">
+                            <span>Final Demand:</span>
+                            <span>{details.demand.actualDemand.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-2 mt-3">
+                          <div className="flex justify-between font-semibold text-gray-800">
+                            <span>Workforce Gap:</span>
+                            <span className={details.gap.actual > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {details.gap.actual > 0 ? '+' : ''}{details.gap.actual.toLocaleString()} FTE
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Gap = Demand - Supply ({details.demand.actualDemand.toLocaleString()} - {details.supply.actualSupply.toLocaleString()})
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
