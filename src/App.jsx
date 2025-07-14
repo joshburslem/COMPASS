@@ -62,10 +62,7 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
         if (input && document.contains(input)) {
           try {
             input.focus();
-            // For number inputs, select all text content
-            if (input.type === 'number') {
-              input.select();
-            }
+            // Just focus without selecting text
           } catch (error) {
             // Silently handle any focus/selection errors
             console.debug('Focus restoration error:', error);
@@ -146,10 +143,7 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
         if (input && document.contains(input)) {
           try {
             input.focus();
-            // For number inputs, select all text content
-            if (input.type === 'number') {
-              input.select();
-            }
+            // Just focus without selecting text
           } catch (error) {
             // Silently handle any focus/selection errors
             console.debug('Focus restoration error:', error);
@@ -210,7 +204,7 @@ function App() {
   const [selectedYear, setSelectedYear] = React.useState(2024);
   const [scenarios, setScenarios] = React.useState([]);
   const [activeScenario, setActiveScenario] = React.useState('baseline');
-  const [showScenarioModal, setShowScenarioModal] = React.useState(false);
+  const [showScenarioModal, setShowScenarioModal] = React.useState(showScenarioModal);
   const [importedData, setImportedData] = React.useState(null);
   const [showDataImport, setShowDataImport] = React.useState(false);
   const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
@@ -785,6 +779,7 @@ function App() {
         setSelectedOccupations([occupation]);
       } else if (selectedOccupations.includes(occupation)) {
         const filtered = selectedOccupations.filter(o => o !== occupation);
+        ```
         setSelectedOccupations(filtered.length === 0 ? ['All'] : filtered);
       } else {
         setSelectedOccupations([...selectedOccupations, occupation]);
