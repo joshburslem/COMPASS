@@ -791,10 +791,14 @@ function App() {
         }
       }
       
-      // For inflow parameters, apply the same value to future years
+      // For inflow parameters, apply the same value to future years AND update supply accordingly
       if (['educationalInflow', 'internationalMigrants', 'domesticMigrants', 'reEntrants'].includes(paramType)) {
         const years = Array.from({length: 11}, (_, i) => 2024 + i);
         const currentYearIndex = years.indexOf(year);
+        
+        // Calculate the change in inflow
+        const currentScenarioBaseline = getCurrentScenarioBaselineForParameter(paramType, year, occupation);
+        const inflowChange = newValue - currentScenarioBaseline;
         
         for (let i = currentYearIndex + 1; i < years.length; i++) {
           const futureYear = years[i];
@@ -802,6 +806,19 @@ function App() {
             newParams[paramType][futureYear] = {};
           }
           newParams[paramType][futureYear][occupation] = newValue;
+          
+          // Also update supply for future years based on cumulative inflow changes
+          if (!newParams.supply[futureYear]) {
+            newParams.supply[futureYear] = {};
+          }
+          
+          // Calculate cumulative years of increased inflow
+          const yearsOfIncreasedInflow = futureYear - year;
+          const cumulativeInflowIncrease = inflowChange * yearsOfIncreasedInflow;
+          
+          // Add the cumulative inflow increase to the current supply baseline
+          const currentSupplyBaseline = getCurrentScenarioBaselineForParameter('supply', futureYear, occupation);
+          newParams.supply[futureYear][occupation] = Math.max(0, currentSupplyBaseline + cumulativeInflowIncrease);
         }
       }
       
