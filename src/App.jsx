@@ -757,22 +757,23 @@ function App() {
       // Update the specific year
       newParams[paramType][year][occupation] = newValue;
       
-      // For supply parameters, propagate changes to future years if this is the first year being modified
+      // For supply parameters, propagate changes to future years starting from the modified year
       if (paramType === 'supply') {
         const years = Array.from({length: 11}, (_, i) => 2024 + i);
         const currentYearIndex = years.indexOf(year);
         
-        // Apply proportional change to future years
-        const baselineValue = workforceData.baselineParameters[paramType][year][occupation];
-        const changeRatio = newValue / baselineValue;
+        // Calculate the change from the baseline value for this year
+        const currentScenarioBaseline = getCurrentScenarioBaselineForParameter(paramType, year, occupation);
+        const changeRatio = newValue / currentScenarioBaseline;
         
+        // Apply proportional change to all future years
         for (let i = currentYearIndex + 1; i < years.length; i++) {
           const futureYear = years[i];
           if (!newParams[paramType][futureYear]) {
             newParams[paramType][futureYear] = {};
           }
-          const futureBaselineValue = workforceData.baselineParameters[paramType][futureYear][occupation];
-          newParams[paramType][futureYear][occupation] = Math.round(futureBaselineValue * changeRatio);
+          const futureScenarioBaseline = getCurrentScenarioBaselineForParameter(paramType, futureYear, occupation);
+          newParams[paramType][futureYear][occupation] = Math.round(futureScenarioBaseline * changeRatio);
         }
       }
       
@@ -831,7 +832,35 @@ function App() {
       // Reset to previous state if update fails
       setEditingParameters(prev => prev);
     }
-  }, [editingParameters, workforceData.baselineParameters]);
+  }, [editingParameters]);
+
+  // Helper function to get the current scenario's baseline value for a parameter
+  const getCurrentScenarioBaselineForParameter = React.useCallback((paramType, year, occupation) => {
+    if (activeScenario === 'baseline') {
+      return workforceData.baselineParameters[paramType][year][occupation];
+    } else {
+      const scenario = scenarios.find(s => s.id === activeScenario);
+      if (scenario && scenario.parameters && scenario.parameters[paramType] && scenario.parameters[paramType][year]) {
+        return scenario.parameters[paramType][year][occupation];
+      }
+      // Fallback to global baseline if scenario doesn't have this parameter
+      return workforceData.baselineParameters[paramType][year][occupation];
+    }
+  }, [activeScenario, scenarios, workforceData.baselineParameters]);
+
+  // Helper function to get the current scenario's complete baseline parameters
+  const getCurrentScenarioBaseline = React.useCallback(() => {
+    if (activeScenario === 'baseline') {
+      return workforceData.baselineParameters;
+    } else {
+      const scenario = scenarios.find(s => s.id === activeScenario);
+      if (scenario && scenario.parameters) {
+        return scenario.parameters;
+      }
+      // Fallback to global baseline if scenario doesn't have parameters
+      return workforceData.baselineParameters;
+    }
+  }, [activeScenario, scenarios, workforceData.baselineParameters]);
 
   const createNewScenario = React.useCallback((scenarioData) => {
     try {
@@ -1112,11 +1141,11 @@ function App() {
                 </div>
               </div>
               <ParameterGridWithBaseline 
-                key={`supply-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`supply-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Current Supply (FTE)"
                 parameterType="supply"
                 parameters={editingParameters.supply}
-                baselineParameters={workforceData.baselineParameters.supply}
+                baselineParameters={getCurrentScenarioBaseline().supply}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
@@ -1143,41 +1172,41 @@ function App() {
                 </div>
               </div>
               <ParameterGridWithBaseline 
-                key={`educational-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`educational-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Educational Inflow (Annual Graduates)"
                 parameterType="educationalInflow"
                 parameters={editingParameters.educationalInflow}
-                baselineParameters={workforceData.baselineParameters.educationalInflow}
+                baselineParameters={getCurrentScenarioBaseline().educationalInflow}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
-                key={`international-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`international-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="International Migrants (Annual)"
                 parameterType="internationalMigrants"
                 parameters={editingParameters.internationalMigrants}
-                baselineParameters={workforceData.baselineParameters.internationalMigrants}
+                baselineParameters={getCurrentScenarioBaseline().internationalMigrants}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
-                key={`domestic-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`domestic-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Domestic Migrants (Annual)"
                 parameterType="domesticMigrants"
                 parameters={editingParameters.domesticMigrants}
-                baselineParameters={workforceData.baselineParameters.domesticMigrants}
+                baselineParameters={getCurrentScenarioBaseline().domesticMigrants}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
-                key={`reentrants-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`reentrants-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Re-Entrants (Annual)"
                 parameterType="reEntrants"
                 parameters={editingParameters.reEntrants}
-                baselineParameters={workforceData.baselineParameters.reEntrants}
+                baselineParameters={getCurrentScenarioBaseline().reEntrants}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
@@ -1204,22 +1233,22 @@ function App() {
                 </div>
               </div>
               <ParameterGridWithBaseline 
-                key={`retirement-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`retirement-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Retirement Rate (%)"
                 parameterType="retirementRate"
                 parameters={editingParameters.retirementRate}
-                baselineParameters={workforceData.baselineParameters.retirementRate}
+                baselineParameters={getCurrentScenarioBaseline().retirementRate}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 isPercentage={true}
                 selectedParameterYear={selectedParameterYear}
               />
               <ParameterGridWithBaseline 
-                key={`attrition-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`attrition-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Attrition Rate (%)"
                 parameterType="attritionRate"
                 parameters={editingParameters.attritionRate}
-                baselineParameters={workforceData.baselineParameters.attritionRate}
+                baselineParameters={getCurrentScenarioBaseline().attritionRate}
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 isPercentage={true}
@@ -1247,31 +1276,31 @@ function App() {
                 </div>
               </div>
               <DemandParameterGrid 
-                key={`population-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`population-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Population Growth Rate (% per year)"
                 parameterType="populationGrowth"
                 parameters={editingParameters.populationGrowth}
-                baselineParameters={workforceData.baselineParameters.populationGrowth}
+                baselineParameters={getCurrentScenarioBaseline().populationGrowth}
                 onUpdate={updateParameter}
                 categories={['0-18', '19-64', '65-84', '85+']}
                 selectedParameterYear={selectedParameterYear}
               />
               <DemandParameterGrid 
-                key={`health-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`health-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Health Status Change (% per year)"
                 parameterType="healthStatusChange"
                 parameters={editingParameters.healthStatusChange}
-                baselineParameters={workforceData.baselineParameters.healthStatusChange}
+                baselineParameters={getCurrentScenarioBaseline().healthStatusChange}
                 onUpdate={updateParameter}
                 categories={['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']}
                 selectedParameterYear={selectedParameterYear}
               />
               <DemandParameterGrid 
-                key={`service-grid-${workforceData.dataVersion}-${selectedParameterYear}`}
+                key={`service-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
                 title="Service Utilization Change (% per year)"
                 parameterType="serviceUtilization"
                 parameters={editingParameters.serviceUtilization}
-                baselineParameters={workforceData.baselineParameters.serviceUtilization}
+                baselineParameters={getCurrentScenarioBaseline().serviceUtilization}
                 onUpdate={updateParameter}
                 categories={['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services']}
                 selectedParameterYear={selectedParameterYear}
