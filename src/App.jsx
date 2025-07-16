@@ -879,8 +879,11 @@ function App() {
 
       const scenarioProjections = generateSampleProjections(editingParameters);
 
+      // Create a unique ID using timestamp and random number to avoid collisions
+      const uniqueId = `scenario_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       const newScenario = {
-        id: Date.now().toString(),
+        id: uniqueId,
         name: scenarioData.name || 'Unnamed Scenario',
         description: scenarioData.description || '',
         parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
@@ -900,6 +903,7 @@ function App() {
       setPendingChanges({});
 
       console.log('Updated scenarios list:', updatedScenarios);
+      console.log('All scenario IDs:', updatedScenarios.map(s => ({ id: s.id, name: s.name })));
     } catch (error) {
       console.error('Error creating new scenario:', error);
       alert('Error creating scenario. Please try again.');
@@ -1299,7 +1303,8 @@ function App() {
               onSelectScenario={(scenarioId) => {
                 try {
                   console.log('Loading scenario:', scenarioId);
-                  console.log('Available scenarios:', scenarios);
+                  console.log('Available scenarios:', scenarios.map(s => ({ id: s.id, name: s.name })));
+                  console.log('Current active scenario:', activeScenario);
 
                   // Check if there are unsaved changes before switching
                   if (unsavedChanges && scenarioId !== activeScenario) {
@@ -1317,26 +1322,31 @@ function App() {
                     // Always use the immutable baseline parameters - create a fresh copy
                     setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
                     // Remove working scenario if switching away
-                    setScenarios(scenarios.filter(s => s.id !== 'working'));
+                    setScenarios(prev => prev.filter(s => s.id !== 'working'));
                     setActiveScenario('baseline');
                     setUnsavedChanges(false);
                     setPendingChanges({});
                   } else {
                     const scenario = scenarios.find(s => s.id === scenarioId);
-                    console.log('Found scenario:', scenario);
+                    console.log('Found scenario:', scenario ? { id: scenario.id, name: scenario.name } : 'NOT FOUND');
 
                     if (scenario && scenario.parameters) {
-                      console.log('Loading scenario parameters:', scenario.parameters);
+                      console.log('Loading scenario parameters for:', scenario.name);
                       // Create a fresh copy of scenario parameters to avoid reference issues
-                      setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
+                      const scenarioParameters = JSON.parse(JSON.stringify(scenario.parameters));
+                      setEditingParameters(scenarioParameters);
                       setActiveScenario(scenarioId);
                       setUnsavedChanges(false);
                       setPendingChanges({});
+                      console.log('Successfully loaded scenario:', scenario.name);
                     } else {
                       console.error('Scenario not found or missing parameters:', scenarioId);
+                      console.error('Available scenario IDs:', scenarios.map(s => s.id));
+                      // Show user-friendly error
+                      alert(`Error: Could not load scenario. The scenario may have been deleted or corrupted.`);
                       // Fallback to baseline if scenario is corrupted
                       setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-                      setScenarios(scenarios.filter(s => s.id !== 'working'));
+                      setScenarios(prev => prev.filter(s => s.id !== 'working'));
                       setActiveScenario('baseline');
                       setUnsavedChanges(false);
                       setPendingChanges({});
@@ -1344,6 +1354,7 @@ function App() {
                   }
                 } catch (error) {
                   console.error("An error occurred while loading the scenario", error);
+                  alert('Error loading scenario. Please try again.');
                 }
               }}
             />
@@ -1885,21 +1896,32 @@ function App() {
 
         {scenarios.length > 0 && (
           <div className="border-t pt-6">
-            <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios</h5>
+            <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios ({scenarios.length})</h5>
             <div className="space-y-2">
-              {scenarios.map(scenario => (
+              {scenarios.filter(s => s.id !== 'working').map(scenario => (
                 <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium">{scenario.name}</p>
                     <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
-                    <p className="text-xs text-gray-500">Created: {new Date(scenario.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">
+                      Created: {new Date(scenario.createdAt).toLocaleDateString()} | ID: {scenario.id.split('_')[2] || scenario.id.substr(-6)}
+                      {activeScenario === scenario.id && <span className="ml-2 text-blue-600 font-medium">(Active)</span>}
+                    </p>
                   </div>
                   <div className="flex space-x-2">
                     <button 
-                      onClick={() => onSelectScenario(scenario.id)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium px-2 py-1 rounded"
+                      onClick={() => {
+                        console.log('Loading scenario from button click:', scenario.id, scenario.name);
+                        onSelectScenario(scenario.id);
+                      }}
+                      className={`text-sm font-medium px-2 py-1 rounded ${
+                        activeScenario === scenario.id 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'text-blue-600 hover:text-blue-800'
+                      }`}
+                      disabled={activeScenario === scenario.id}
                     >
-                      Load
+                      {activeScenario === scenario.id ? 'Active' : 'Load'}
                     </button>
                     <button 
                       onClick={() => exportScenarioToExcel(scenario.id)}
@@ -1908,7 +1930,21 @@ function App() {
                     >
                       Export
                     </button>
-                    <button className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded">
+                    <button 
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete the scenario "${scenario.name}"?`)) {
+                          const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
+                          setScenarios(updatedScenarios);
+                          if (activeScenario === scenario.id) {
+                            setActiveScenario('baseline');
+                            setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                            setUnsavedChanges(false);
+                            setPendingChanges({});
+                          }
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded"
+                    >
                       Delete
                     </button>
                   </div>
