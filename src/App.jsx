@@ -1934,57 +1934,99 @@ function App() {
 
         {scenarios.length > 0 && (
           <div className="border-t pt-6">
-            <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios ({scenarios.length})</h5>
+            <h5 className="font-medium text-gray-800 mb-3">Saved Scenarios ({scenarios.filter(s => s.id !== 'working').length})</h5>
             <div className="space-y-2">
-              {scenarios.filter(s => s.id !== 'working').map(scenario => (
-                <div key={scenario.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              {scenarios.map(scenario => (
+                <div key={scenario.id} className={`flex justify-between items-center p-3 rounded-lg ${
+                  scenario.id === 'working' ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
+                }`}>
                   <div className="flex-1">
-                    <p className="font-medium">{scenario.name}</p>
-                    <p className="text-sm text-gray-600">{scenario.description || 'No description'}</p>
-                    <p className="text-xs text-gray-500">
-                      Created: {new Date(scenario.createdAt).toLocaleDateString()} | ID: {scenario.id.split('_')[2] || scenario.id.substr(-6)}
+                    <p className={`font-medium ${scenario.id === 'working' ? 'text-orange-800' : ''}`}>
+                      {scenario.name}
+                      {scenario.id === 'working' && <span className="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">APPLIED CHANGES</span>}
+                    </p>
+                    <p className={`text-sm ${scenario.id === 'working' ? 'text-orange-700' : 'text-gray-600'}`}>
+                      {scenario.description || 'No description'}
+                    </p>
+                    <p className={`text-xs ${scenario.id === 'working' ? 'text-orange-600' : 'text-gray-500'}`}>
+                      {scenario.id === 'working' ? (
+                        <>Applied changes - save as scenario to keep permanently</>
+                      ) : (
+                        <>Created: {new Date(scenario.createdAt).toLocaleDateString()} | ID: {scenario.id.split('_')[2] || scenario.id.substr(-6)}</>
+                      )}
                       {activeScenario === scenario.id && <span className="ml-2 text-blue-600 font-medium">(Active)</span>}
                     </p>
                   </div>
                   <div className="flex space-x-2">
-                    <button 
-                      onClick={() => {
-                        console.log('Loading scenario from button click:', scenario.id, scenario.name);
-                        onSelectScenario(scenario.id);
-                      }}
-                      className={`text-sm font-medium px-2 py-1 rounded ${
-                        activeScenario === scenario.id 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'text-blue-600 hover:text-blue-800'
-                      }`}
-                      disabled={activeScenario === scenario.id}
-                    >
-                      {activeScenario === scenario.id ? 'Active' : 'Load'}
-                    </button>
-                    <button 
-                      onClick={() => exportScenarioToExcel(scenario.id)}
-                      className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
-                      title="Export this scenario to Excel"
-                    >
-                      Export
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to delete the scenario "${scenario.name}"?`)) {
-                          const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
-                          setScenarios(updatedScenarios);
-                          if (activeScenario === scenario.id) {
-                            setActiveScenario('baseline');
-                            setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-                            setUnsavedChanges(false);
-                            setPendingChanges({});
-                          }
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded"
-                    >
-                      Delete
-                    </button>
+                    {scenario.id !== 'working' && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            console.log('Loading scenario from button click:', scenario.id, scenario.name);
+                            onSelectScenario(scenario.id);
+                          }}
+                          className={`text-sm font-medium px-2 py-1 rounded ${
+                            activeScenario === scenario.id 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'text-blue-600 hover:text-blue-800'
+                          }`}
+                          disabled={activeScenario === scenario.id}
+                        >
+                          {activeScenario === scenario.id ? 'Active' : 'Load'}
+                        </button>
+                        <button 
+                          onClick={() => exportScenarioToExcel(scenario.id)}
+                          className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
+                          title="Export this scenario to Excel"
+                        >
+                          Export
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete the scenario "${scenario.name}"?`)) {
+                              const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
+                              setScenarios(updatedScenarios);
+                              if (activeScenario === scenario.id) {
+                                setActiveScenario('baseline');
+                                setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+                                setUnsavedChanges(false);
+                                setPendingChanges({});
+                              }
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    {scenario.id === 'working' && (
+                      <>
+                        <button 
+                          onClick={onCreateScenario}
+                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                        >
+                          Save as Scenario
+                        </button>
+                        <button 
+                          onClick={() => exportScenarioToExcel(scenario.id)}
+                          className="text-green-600 hover:text-green-800 text-sm font-medium px-2 py-1 rounded"
+                          title="Export working changes to Excel"
+                        >
+                          Export
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to discard the applied changes?')) {
+                              onSelectScenario('baseline');
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium px-2 py-1 rounded"
+                        >
+                          Discard
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
