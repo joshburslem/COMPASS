@@ -884,61 +884,59 @@ function App() {
 
       const scenarioProjections = generateSampleProjections(editingParameters);
 
-      // Create a truly unique ID using multiple sources of randomness
+      // Create a truly unique ID using timestamp and random components
       const timestamp = Date.now();
-      const randomPart1 = Math.random().toString(36).substr(2, 9);
-      const randomPart2 = Math.random().toString(36).substr(2, 9);
-      const counter = scenarios.length + 1;
-      const uniqueId = `scenario_${timestamp}_${randomPart1}_${randomPart2}_${counter}`;
+      const randomPart = Math.random().toString(36).substr(2, 9);
+      const uniqueId = `scenario_${timestamp}_${randomPart}`;
 
-      // Double-check for ID collision (should be extremely rare now)
-      const existingIds = scenarios.map(s => s.id);
-      if (existingIds.includes(uniqueId)) {
-        console.warn('ID collision detected, generating new ID');
-        const fallbackId = `scenario_${Date.now()}_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36)}`;
-        console.log('Using fallback ID:', fallbackId);
+      // Ensure the ID is truly unique by checking against existing scenarios
+      let finalId = uniqueId;
+      let counter = 1;
+      while (scenarios.some(s => s.id === finalId)) {
+        finalId = `${uniqueId}_${counter}`;
+        counter++;
       }
 
       const newScenario = {
-        id: uniqueId,
+        id: finalId,
         name: scenarioData.name || 'Unnamed Scenario',
         description: scenarioData.description || '',
-        parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy
+        parameters: JSON.parse(JSON.stringify(editingParameters)), // Deep copy to avoid reference issues
         projections: scenarioProjections,
         createdAt: new Date().toISOString()
       };
 
-      console.log('New scenario created:', newScenario);
+      console.log('New scenario created with ID:', finalId);
 
-      // Remove working scenario if it exists and add the new permanent scenario
-      const filteredScenarios = scenarios.filter(s => s.id !== 'working');
-      
-      // Ensure we're not accidentally replacing an existing scenario
-      const duplicateNameScenarios = filteredScenarios.filter(s => s.name === newScenario.name);
-      if (duplicateNameScenarios.length > 0) {
-        console.warn('Scenario with same name exists:', duplicateNameScenarios);
-        newScenario.name = `${newScenario.name} (${duplicateNameScenarios.length + 1})`;
-        console.log('Renamed scenario to:', newScenario.name);
-      }
+      // Use functional state update to avoid stale closure issues
+      setScenarios(prevScenarios => {
+        // Remove working scenario if it exists
+        const filteredScenarios = prevScenarios.filter(s => s.id !== 'working');
+        
+        // Handle duplicate names
+        const duplicateNameScenarios = filteredScenarios.filter(s => s.name === newScenario.name);
+        if (duplicateNameScenarios.length > 0) {
+          newScenario.name = `${newScenario.name} (${duplicateNameScenarios.length + 1})`;
+        }
 
-      const updatedScenarios = [...filteredScenarios, newScenario];
-      
-      console.log('About to update scenarios state with:', updatedScenarios.map(s => ({ id: s.id, name: s.name })));
-      
-      setScenarios(updatedScenarios);
-      setActiveScenario(newScenario.id);
+        const updatedScenarios = [...filteredScenarios, newScenario];
+        console.log('Scenarios updated from', prevScenarios.length, 'to', updatedScenarios.length);
+        console.log('New scenarios list:', updatedScenarios.map(s => ({ id: s.id, name: s.name })));
+        
+        return updatedScenarios;
+      });
+
+      setActiveScenario(finalId);
       setShowScenarioModal(false);
       setUnsavedChanges(false);
       setPendingChanges({});
 
-      console.log('Updated scenarios list:', updatedScenarios);
-      console.log('All scenario IDs after creation:', updatedScenarios.map(s => ({ id: s.id, name: s.name })));
-      console.log('Active scenario set to:', newScenario.id);
+      console.log('Active scenario set to:', finalId);
     } catch (error) {
       console.error('Error creating new scenario:', error);
       alert('Error creating scenario. Please try again.');
     }
-  }, [editingParameters, scenarios]);
+  }, [editingParameters]);
 
   const getCurrentScenarioProjections = () => {
     try {
