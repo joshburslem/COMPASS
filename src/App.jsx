@@ -791,34 +791,27 @@ function App() {
         }
       }
       
-      // For inflow parameters, apply the same value to future years AND update supply accordingly
+      // For inflow parameters, only update supply for future years (don't change future inflow values)
       if (['educationalInflow', 'internationalMigrants', 'domesticMigrants', 'reEntrants'].includes(paramType)) {
         const years = Array.from({length: 11}, (_, i) => 2024 + i);
         const currentYearIndex = years.indexOf(year);
         
-        // Calculate the change in inflow
+        // Calculate the change in inflow for this specific year only
         const currentScenarioBaseline = getCurrentScenarioBaselineForParameter(paramType, year, occupation);
         const inflowChange = newValue - currentScenarioBaseline;
         
+        // Update supply for future years based on the cumulative effect of this year's change
         for (let i = currentYearIndex + 1; i < years.length; i++) {
           const futureYear = years[i];
-          if (!newParams[paramType][futureYear]) {
-            newParams[paramType][futureYear] = {};
-          }
-          newParams[paramType][futureYear][occupation] = newValue;
           
-          // Also update supply for future years based on cumulative inflow changes
           if (!newParams.supply[futureYear]) {
             newParams.supply[futureYear] = {};
           }
           
-          // Calculate cumulative years of increased inflow
-          const yearsOfIncreasedInflow = futureYear - year;
-          const cumulativeInflowIncrease = inflowChange * yearsOfIncreasedInflow;
-          
-          // Add the cumulative inflow increase to the current supply baseline
+          // Add the one-time inflow change to all future years' supply
+          // (the extra people from this year's increased inflow stay in the workforce)
           const currentSupplyBaseline = getCurrentScenarioBaselineForParameter('supply', futureYear, occupation);
-          newParams.supply[futureYear][occupation] = Math.max(0, currentSupplyBaseline + cumulativeInflowIncrease);
+          newParams.supply[futureYear][occupation] = Math.max(0, currentSupplyBaseline + inflowChange);
         }
       }
       
