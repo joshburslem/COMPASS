@@ -531,37 +531,26 @@ function App() {
     try {
       const years = Array.from({length: 11}, (_, i) => 2024 + i);
       const occupations = ['Physicians', 'Nurse Practitioners', 'Registered Nurses', 'Licensed Practical Nurses', 'Medical Office Assistants'];
+      
+      // Initialize baseline supply for 2024
+      const baseline2024Supply = {
+        'Physicians': 2500,
+        'Nurse Practitioners': 800,
+        'Registered Nurses': 4200,
+        'Licensed Practical Nurses': 1800,
+        'Medical Office Assistants': 3200
+      };
 
-      return years.reduce((acc, year) => {
+      return years.reduce((acc, year, yearIndex) => {
         acc[year] = {};
+        
         occupations.forEach(occ => {
           try {
-            let baseSupply = parameters && parameters.supply && parameters.supply[year] && parameters.supply[year][occ] 
-              ? parameters.supply[year][occ] 
-              : {
-                'Physicians': 2500,
-                'Nurse Practitioners': 800,
-                'Registered Nurses': 4200,
-                'Licensed Practical Nurses': 1800,
-                'Medical Office Assistants': 3200
-              }[occ];
-
-            if (parameters && parameters.supply && parameters.supply[year]) {
-              // Calculate supply with all inflows and outflows - with safety checks
-              const educationalInflow = parameters.educationalInflow?.[year]?.[occ] || 0;
-              const internationalMigrants = parameters.internationalMigrants?.[year]?.[occ] || 0;
-              const domesticMigrants = parameters.domesticMigrants?.[year]?.[occ] || 0;
-              const reEntrants = parameters.reEntrants?.[year]?.[occ] || 0;
-              const retirementRate = parameters.retirementRate?.[year]?.[occ] || 0;
-              const attritionRate = parameters.attritionRate?.[year]?.[occ] || 0;
-
-              const inflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
-              const outflows = baseSupply * (retirementRate + attritionRate);
-              baseSupply = Math.max(0, baseSupply + inflows - outflows); // Ensure non-negative
-            }
-
-            // If no parameters provided, use the original calculation for baseline
+            let currentSupply;
+            
             if (!parameters) {
+              // Baseline calculation without parameters
+              const baseSupply = baseline2024Supply[occ];
               const baseDemand = baseSupply * 1.1; // 10% shortage baseline
               const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
               const supply = Math.round(Math.max(0, baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)));
@@ -572,17 +561,45 @@ function App() {
                 demand: demand,
                 gap: demand - supply
               };
-              return acc;
+              return;
             }
 
-            // For scenarios with parameters, calculate demand independently from supply changes
-            // Use baseline demand from 2024 and apply growth and parameter adjustments
+            // For first year (2024), use the baseline or provided supply
+            if (year === 2024) {
+              currentSupply = parameters.supply?.[year]?.[occ] || baseline2024Supply[occ];
+            } else {
+              // For subsequent years, calculate supply based on previous year plus changes
+              const previousYear = year - 1;
+              const previousSupply = acc[previousYear][occ].supply;
+              
+              // Get parameters for current year (or use previous year if not available)
+              const educationalInflow = parameters.educationalInflow?.[year]?.[occ] || 
+                                       parameters.educationalInflow?.[previousYear]?.[occ] || 0;
+              const internationalMigrants = parameters.internationalMigrants?.[year]?.[occ] || 
+                                           parameters.internationalMigrants?.[previousYear]?.[occ] || 0;
+              const domesticMigrants = parameters.domesticMigrants?.[year]?.[occ] || 
+                                      parameters.domesticMigrants?.[previousYear]?.[occ] || 0;
+              const reEntrants = parameters.reEntrants?.[year]?.[occ] || 
+                                parameters.reEntrants?.[previousYear]?.[occ] || 0;
+              const retirementRate = parameters.retirementRate?.[year]?.[occ] || 
+                                    parameters.retirementRate?.[previousYear]?.[occ] || 0;
+              const attritionRate = parameters.attritionRate?.[year]?.[occ] || 
+                                   parameters.attritionRate?.[previousYear]?.[occ] || 0;
+
+              // Calculate annual changes
+              const inflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
+              const outflows = previousSupply * (retirementRate + attritionRate);
+              
+              currentSupply = Math.max(0, previousSupply + inflows - outflows);
+            }
+
+            // Calculate demand for current year
             const baseline2024Demand = {
-              'Physicians': 2750,  // This matches the baseline calculation: 2500 * 1.1
-              'Nurse Practitioners': 880,    // 800 * 1.1
-              'Registered Nurses': 4620,     // 4200 * 1.1  
-              'Licensed Practical Nurses': 1980,  // 1800 * 1.1
-              'Medical Office Assistants': 3520   // 3200 * 1.1
+              'Physicians': 2750,
+              'Nurse Practitioners': 880,
+              'Registered Nurses': 4620,
+              'Licensed Practical Nurses': 1980,
+              'Medical Office Assistants': 3520
             }[occ];
 
             // Apply time-based growth from 2024 baseline
@@ -604,7 +621,7 @@ function App() {
               demandMultiplier *= (1 + avgServiceChange);
             }
 
-            const supply = Math.round(Math.max(0, baseSupply));
+            const supply = Math.round(Math.max(0, currentSupply));
             const demand = Math.round(Math.max(0, baseline2024Demand * demandMultiplier));
 
             acc[year][occ] = {
@@ -728,13 +745,79 @@ function App() {
     try {
       // Create a completely new parameter object to avoid any reference issues
       const newParams = JSON.parse(JSON.stringify(editingParameters));
+      const newValue = parseFloat(value) || 0;
+      
       if (!newParams[paramType]) {
         newParams[paramType] = {};
       }
       if (!newParams[paramType][year]) {
         newParams[paramType][year] = {};
       }
-      newParams[paramType][year][occupation] = parseFloat(value) || 0;
+      
+      // Update the specific year
+      newParams[paramType][year][occupation] = newValue;
+      
+      // For supply parameters, propagate changes to future years if this is the first year being modified
+      if (paramType === 'supply') {
+        const years = Array.from({length: 11}, (_, i) => 2024 + i);
+        const currentYearIndex = years.indexOf(year);
+        
+        // Apply proportional change to future years
+        const baselineValue = workforceData.baselineParameters[paramType][year][occupation];
+        const changeRatio = newValue / baselineValue;
+        
+        for (let i = currentYearIndex + 1; i < years.length; i++) {
+          const futureYear = years[i];
+          if (!newParams[paramType][futureYear]) {
+            newParams[paramType][futureYear] = {};
+          }
+          const futureBaselineValue = workforceData.baselineParameters[paramType][futureYear][occupation];
+          newParams[paramType][futureYear][occupation] = Math.round(futureBaselineValue * changeRatio);
+        }
+      }
+      
+      // For rate parameters (retirement, attrition), apply the same rate to all future years
+      if (paramType === 'retirementRate' || paramType === 'attritionRate') {
+        const years = Array.from({length: 11}, (_, i) => 2024 + i);
+        const currentYearIndex = years.indexOf(year);
+        
+        for (let i = currentYearIndex + 1; i < years.length; i++) {
+          const futureYear = years[i];
+          if (!newParams[paramType][futureYear]) {
+            newParams[paramType][futureYear] = {};
+          }
+          newParams[paramType][futureYear][occupation] = newValue;
+        }
+      }
+      
+      // For inflow parameters, apply the same value to future years
+      if (['educationalInflow', 'internationalMigrants', 'domesticMigrants', 'reEntrants'].includes(paramType)) {
+        const years = Array.from({length: 11}, (_, i) => 2024 + i);
+        const currentYearIndex = years.indexOf(year);
+        
+        for (let i = currentYearIndex + 1; i < years.length; i++) {
+          const futureYear = years[i];
+          if (!newParams[paramType][futureYear]) {
+            newParams[paramType][futureYear] = {};
+          }
+          newParams[paramType][futureYear][occupation] = newValue;
+        }
+      }
+      
+      // For demand parameters, apply to future years as well
+      if (['populationGrowth', 'healthStatusChange', 'serviceUtilization'].includes(paramType)) {
+        const years = Array.from({length: 11}, (_, i) => 2024 + i);
+        const currentYearIndex = years.indexOf(year);
+        
+        for (let i = currentYearIndex + 1; i < years.length; i++) {
+          const futureYear = years[i];
+          if (!newParams[paramType][futureYear]) {
+            newParams[paramType][futureYear] = {};
+          }
+          newParams[paramType][futureYear][occupation] = newValue;
+        }
+      }
+      
       setEditingParameters(newParams);
       setUnsavedChanges(true);
 
@@ -748,7 +831,7 @@ function App() {
       // Reset to previous state if update fails
       setEditingParameters(prev => prev);
     }
-  }, [editingParameters]);
+  }, [editingParameters, workforceData.baselineParameters]);
 
   const createNewScenario = React.useCallback((scenarioData) => {
     try {
