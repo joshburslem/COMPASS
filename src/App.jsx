@@ -202,7 +202,7 @@ function App() {
   const [importedData, setImportedData] = React.useState(null);
   const [showDataImport, setShowDataImport] = React.useState(false);
   const [selectedOccupations, setSelectedOccupations] = React.useState(['All']);
-  const [activeParameterTab, setActiveParameterTab] = React.useState('supply');
+  const [activeParameterTab, setActiveParameterTab] = React.useState('inflows');
   const [selectedParameterYear, setSelectedParameterYear] = React.useState(2024);
   const [unsavedChanges, setUnsavedChanges] = React.useState(false);
   const [pendingChanges, setPendingChanges] = React.useState({}); // Track pending parameter changes
@@ -1116,7 +1116,6 @@ function App() {
         <div className="border-b border-gray-200 mb-6">
           <nav className="-mb-px flex space-x-8">
             {[
-              { id: 'supply', label: 'Supply Parameters' },
               { id: 'inflows', label: 'Workforce Inflows' },
               { id: 'outflows', label: 'Retirement & Attrition' },
               { id: 'demand', label: 'Demand Drivers' },
@@ -1139,37 +1138,6 @@ function App() {
 
         {/* Parameter Content */}
         <div className="mb-6">
-          {activeParameterTab === 'supply' && (
-            <div className="space-y-6" key={`supply-${workforceData.dataVersion}`}>
-              {/* Year Selector for Supply Parameters */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-800">Supply Parameters</h3>
-                <div className="flex items-center space-x-3">
-                  <label className="text-sm font-medium text-gray-700">Editing Year:</label>
-                  <select 
-                    value={selectedParameterYear} 
-                    onChange={(e) => setSelectedParameterYear(parseInt(e.target.value))}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {Array.from({length: 11}, (_, i) => 2024 + i).map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <ParameterGridWithBaseline 
-                key={`supply-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
-                title="Current Supply (FTE)"
-                parameterType="supply"
-                parameters={editingParameters.supply}
-                baselineParameters={getCurrentScenarioBaseline().supply}
-                onUpdate={updateParameter}
-                occupations={workforceData.occupations}
-                selectedParameterYear={selectedParameterYear}
-              />
-            </div>
-          )}
-
           {activeParameterTab === 'inflows' && (
             <div className="space-y-6" key={`inflows-${workforceData.dataVersion}`}>
               {/* Year Selector for Inflow Parameters */}
