@@ -547,41 +547,18 @@ function App() {
               }[occ];
 
             if (parameters && parameters.supply && parameters.supply[year]) {
-            // For year-over-year calculations, we need to use the previous year's calculated supply
-            // or the base supply for the first year
-            let currentSupply = baseSupply;
+              // Calculate supply with all inflows and outflows - with safety checks
+              const educationalInflow = parameters.educationalInflow?.[year]?.[occ] || 0;
+              const internationalMigrants = parameters.internationalMigrants?.[year]?.[occ] || 0;
+              const domesticMigrants = parameters.domesticMigrants?.[year]?.[occ] || 0;
+              const reEntrants = parameters.reEntrants?.[year]?.[occ] || 0;
+              const retirementRate = parameters.retirementRate?.[year]?.[occ] || 0;
+              const attritionRate = parameters.attritionRate?.[year]?.[occ] || 0;
 
-            // If this is not the base year (2024), calculate cumulative effect from previous years
-            if (year > 2024) {
-              // Start with 2024 base supply and apply changes year by year
-              currentSupply = parameters.supply[2024][occ] || baseSupply;
-
-              for (let calcYear = 2024; calcYear < year; calcYear++) {
-                const educationalInflow = parameters.educationalInflow?.[calcYear]?.[occ] || 0;
-                const internationalMigrants = parameters.internationalMigrants?.[calcYear]?.[occ] || 0;
-                const domesticMigrants = parameters.domesticMigrants?.[calcYear]?.[occ] || 0;
-                const reEntrants = parameters.reEntrants?.[calcYear]?.[occ] || 0;
-                const retirementRate = parameters.retirementRate?.[calcYear]?.[occ] || 0;
-                const attritionRate = parameters.attritionRate?.[calcYear]?.[occ] || 0;
-
-                const inflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
-                const outflows = currentSupply * (retirementRate + attritionRate);
-                currentSupply = Math.max(0, currentSupply + inflows - outflows);
-              }
+              const inflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
+              const outflows = baseSupply * (retirementRate + attritionRate);
+              baseSupply = Math.max(0, baseSupply + inflows - outflows); // Ensure non-negative
             }
-
-            // Apply current year changes
-            const educationalInflow = parameters.educationalInflow?.[year]?.[occ] || 0;
-            const internationalMigrants = parameters.internationalMigrants?.[year]?.[occ] || 0;
-            const domesticMigrants = parameters.domesticMigrants?.[year]?.[occ] || 0;
-            const reEntrants = parameters.reEntrants?.[year]?.[occ] || 0;
-            const retirementRate = parameters.retirementRate?.[year]?.[occ] || 0;
-            const attritionRate = parameters.attritionRate?.[year]?.[occ] || 0;
-
-            const inflows = educationalInflow + internationalMigrants + domesticMigrants + reEntrants;
-            const outflows = currentSupply * (retirementRate + attritionRate);
-            baseSupply = Math.max(0, currentSupply + inflows - outflows);
-          }
 
             // If no parameters provided, use the original calculation for baseline
             if (!parameters) {
@@ -748,7 +725,6 @@ function App() {
   }, [visualizationsNeedUpdate, lastAppliedProjections]);
 
   const updateParameter = React.useCallback((paramType, year, occupation, value) => {
-    ```text
     try {
       // Create a completely new parameter object to avoid any reference issues
       const newParams = JSON.parse(JSON.stringify(editingParameters));
