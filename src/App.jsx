@@ -248,7 +248,7 @@ function App() {
     const lines = csvText.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
     const data = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim());
       const row = {};
@@ -257,7 +257,7 @@ function App() {
       });
       data.push(row);
     }
-    
+
     return data;
   };
 
@@ -560,11 +560,52 @@ function App() {
               baseSupply = Math.max(0, baseSupply + inflows - outflows); // Ensure non-negative
             }
 
-            const baseDemand = baseSupply * 1.1; // 10% shortage baseline
-            const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
+            // If no parameters provided, use the original calculation for baseline
+            if (!parameters) {
+              const baseDemand = baseSupply * 1.1; // 10% shortage baseline
+              const yearMultiplier = 1 + (year - 2024) * 0.02; // 2% annual growth
+              const supply = Math.round(Math.max(0, baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)));
+              const demand = Math.round(Math.max(0, baseDemand * yearMultiplier));
 
-            const supply = Math.round(Math.max(0, parameters ? baseSupply : baseSupply * yearMultiplier * (0.95 + Math.random() * 0.1)));
-            const demand = Math.round(Math.max(0, baseDemand * yearMultiplier));
+              acc[year][occ] = {
+                supply: supply,
+                demand: demand,
+                gap: demand - supply
+              };
+              return acc;
+            }
+
+            // For scenarios with parameters, calculate demand independently from supply changes
+            // Use baseline demand from 2024 and apply growth and parameter adjustments
+            const baseline2024Demand = {
+              'Physicians': 2750,  // This matches the baseline calculation: 2500 * 1.1
+              'Nurse Practitioners': 880,    // 800 * 1.1
+              'Registered Nurses': 4620,     // 4200 * 1.1  
+              'Licensed Practical Nurses': 1980,  // 1800 * 1.1
+              'Medical Office Assistants': 3520   // 3200 * 1.1
+            }[occ];
+
+            // Apply time-based growth from 2024 baseline
+            let demandMultiplier = 1 + (year - 2024) * 0.02; // 2% baseline annual growth
+
+            // Apply demand parameter adjustments if available
+            if (parameters.populationGrowth && parameters.populationGrowth[year]) {
+              const avgPopGrowth = Object.values(parameters.populationGrowth[year]).reduce((a, b) => a + b, 0) / 4;
+              demandMultiplier *= (1 + avgPopGrowth);
+            }
+
+            if (parameters.healthStatusChange && parameters.healthStatusChange[year]) {
+              const avgHealthChange = Object.values(parameters.healthStatusChange[year]).reduce((a, b) => a + b, 0) / Object.keys(parameters.healthStatusChange[year]).length;
+              demandMultiplier *= (1 + avgHealthChange);
+            }
+
+            if (parameters.serviceUtilization && parameters.serviceUtilization[year]) {
+              const avgServiceChange = Object.values(parameters.serviceUtilization[year]).reduce((a, b) => a + b, 0) / Object.keys(parameters.serviceUtilization[year]).length;
+              demandMultiplier *= (1 + avgServiceChange);
+            }
+
+            const supply = Math.round(Math.max(0, baseSupply));
+            const demand = Math.round(Math.max(0, baseline2024Demand * demandMultiplier));
 
             acc[year][occ] = {
               supply: supply,
@@ -1240,7 +1281,7 @@ function App() {
               </span>
             )}
           </div>
-          
+
           {/* Add occupation filter to the Projected Workforce Gap Trends chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1270,7 +1311,7 @@ function App() {
               ))}
             </div>
           </div>
-          
+
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
@@ -1296,7 +1337,7 @@ function App() {
               </span>
             )}
           </div>
-          
+
           {/* Add occupation filter to the Supply vs Demand Analysis chart */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Select Occupations to View</h3>
@@ -1326,7 +1367,7 @@ function App() {
               ))}
             </div>
           </div>
-          
+
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart 
@@ -1353,7 +1394,7 @@ function App() {
                 </span>
               )}
             </div>
-            
+
             {/* Only render when changes are applied or scenario is loaded */}
             {(activeScenario !== 'baseline' || !unsavedChanges) ? (
               <ParameterImpactChart parameters={
@@ -2072,7 +2113,7 @@ function App() {
     const years = Object.keys(data).sort();
     const chartData = years.map(year => {
       const yearData = { year };
-      
+
       // Calculate supply and demand for each selected occupation
       selectedOccupations.forEach(occ => {
         const occData = data[year][occ] || { supply: 0, demand: 0 };
@@ -2080,7 +2121,7 @@ function App() {
         yearData[`${occ}_demand`] = occData.demand;
         yearData[`${occ}_gap`] = occData.demand - occData.supply;
       });
-      
+
       return yearData;
     });
 
@@ -2202,7 +2243,7 @@ function App() {
                         </div>
                       ))}
                     </div>
-                    
+
                     {/* Line type legend */}
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
@@ -2280,12 +2321,12 @@ function App() {
     }
 
     const years = Object.keys(scenarios[0].projections).sort();
-    
+
     if (chartType === 'gap') {
       // Gap comparison chart
       const chartData = years.map(year => {
         const yearData = { year };
-        
+
         selectedOccupations.forEach(occ => {
           scenarios.forEach(scenario => {
             const scenarioData = scenario.projections[year][occ];
@@ -2293,7 +2334,7 @@ function App() {
             yearData[key] = scenarioData?.gap || 0;
           });
         });
-        
+
         return yearData;
       });
 
@@ -2370,20 +2411,20 @@ function App() {
       // Supply vs Demand comparison
       const chartData = years.map(year => {
         const yearData = { year };
-        
+
         scenarios.forEach(scenario => {
           const totalSupply = selectedOccupations.reduce((sum, occ) => {
             return sum + (scenario.projections[year][occ]?.supply || 0);
           }, 0);
-          
+
           const totalDemand = selectedOccupations.reduce((sum, occ) => {
             return sum + (scenario.projections[year][occ]?.demand || 0);
           }, 0);
-          
+
           yearData[`${scenario.name}_supply`] = totalSupply;
           yearData[`${scenario.name}_demand`] = totalDemand;
         });
-        
+
         return yearData;
       });
 
@@ -2497,11 +2538,11 @@ function App() {
 
       try {
         const fileContent = await selectedFile.text();
-        
+
         if (dataType === 'baseline') {
           // Process baseline population projections
           const csvData = parseCSV(fileContent);
-          
+
           // Validate required columns
           const requiredColumns = ['Year', 'Gender', 'Age_Group', 'Projected_Population'];
           const hasRequiredColumns = requiredColumns.every(col => 
@@ -2514,14 +2555,14 @@ function App() {
 
           // Process population data into growth rates
           const populationGrowth = processPopulationData(csvData);
-          
+
           if (!populationGrowth) {
             throw new Error('Failed to process population data');
           }
 
           // Generate complete parameter set from uploaded data
           const newBaselineParameters = generateParametersFromUploadedData(populationGrowth);
-          
+
           // Update the app state with new baseline data
           setWorkforceData(prev => ({
             ...prev,
@@ -2544,7 +2585,7 @@ function App() {
 
           // Reset editing parameters to use new baseline
           setEditingParameters(JSON.parse(JSON.stringify(newBaselineParameters)));
-          
+
           // Clear any existing scenarios and reset state
           setScenarios([]);
           setActiveScenario('baseline');
@@ -2558,7 +2599,7 @@ function App() {
             type: 'success', 
             message: `Successfully imported baseline data with ${csvData.length} population records` 
           });
-          
+
           console.log('Data import successful:', {
             recordCount: csvData.length,
             years: Object.keys(populationGrowth).length,
@@ -2592,7 +2633,7 @@ function App() {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-[500px] max-h-[90vh] overflow-y-auto">
           <h3 className="text-lg font-semibold mb-4">Import Baseline Data</h3>
-          
+
           {/* Status Messages */}
           {uploadStatus && (
             <div className={`mb-4 p-3 rounded-lg ${
