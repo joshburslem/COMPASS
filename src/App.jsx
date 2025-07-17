@@ -718,37 +718,95 @@ function App() {
     }
   }, [editingParameters, activeScenario]);
 
-  const resetParameters = () => {
-    if (activeScenario === 'baseline' || activeScenario === 'working') {
-      // Always use the immutable baseline parameters with forced new reference
-      setEditingParameters(() => JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-      if (activeScenario === 'working') {
-        // Remove working scenario and return to baseline
-        setScenarios(scenarios.filter(s => s.id !== 'working'));
-        setActiveScenario('baseline');
+  const resetParameters = React.useCallback(() => {
+    React.startTransition(() => {
+      if (activeScenario === 'baseline' || activeScenario === 'working') {
+        // Use functional update with guaranteed new reference
+        setEditingParameters(prevParams => {
+          console.log('Resetting to baseline parameters');
+          return JSON.parse(JSON.stringify(workforceData.baselineParameters));
+        });
+        
+        if (activeScenario === 'working') {
+          // Remove working scenario and return to baseline with functional updates
+          setScenarios(prevScenarios => {
+            console.log('Removing working scenario during reset');
+            return prevScenarios.filter(s => s.id !== 'working');
+          });
+          
+          setActiveScenario(prevActive => {
+            console.log('Resetting active scenario to baseline from:', prevActive);
+            return 'baseline';
+          });
+        }
+      } else {
+        // Find scenario and reset to its saved parameters
+        setScenarios(currentScenarios => {
+          const scenario = currentScenarios.find(s => s.id === activeScenario);
+          if (scenario && scenario.parameters) {
+            setEditingParameters(prevParams => {
+              console.log('Resetting to scenario parameters for:', scenario.name);
+              return JSON.parse(JSON.stringify(scenario.parameters));
+            });
+          }
+          return currentScenarios;
+        });
       }
-    } else {
-      const scenario = scenarios.find(s => s.id === activeScenario);
-      if (scenario && scenario.parameters) {
-        // Use the scenario's saved parameters with forced new reference
-        setEditingParameters(() => JSON.parse(JSON.stringify(scenario.parameters)));
-      }
-    }
-    setUnsavedChanges(false);
-    setPendingChanges({});
-  };
+      
+      // Clear flags with functional updates
+      setUnsavedChanges(prev => {
+        console.log('Clearing unsaved changes during reset');
+        return false;
+      });
+      
+      setPendingChanges(prev => {
+        console.log('Clearing pending changes during reset');
+        return {};
+      });
+    });
+  }, [activeScenario, workforceData.baselineParameters]);
 
-  const resetToBaseline = () => {
-    // Always use the immutable baseline parameters with forced new reference
-    setEditingParameters(() => JSON.parse(JSON.stringify(workforceData.baselineParameters)));
-    // Remove working scenario if it exists
-    setScenarios(scenarios.filter(s => s.id !== 'working'));
-    setActiveScenario('baseline');
-    setUnsavedChanges(false);
-    setPendingChanges({});
-    setVisualizationsNeedUpdate(false);
-    setLastAppliedProjections(null);
-  };
+  const resetToBaseline = React.useCallback(() => {
+    console.log('Resetting to baseline - full reset');
+    
+    React.startTransition(() => {
+      // Use functional updates for all state changes
+      setEditingParameters(prevParams => {
+        console.log('Setting editing parameters to baseline');
+        return JSON.parse(JSON.stringify(workforceData.baselineParameters));
+      });
+      
+      setScenarios(prevScenarios => {
+        console.log('Removing working scenario if exists');
+        return prevScenarios.filter(s => s.id !== 'working');
+      });
+      
+      setActiveScenario(prevActive => {
+        console.log('Setting active scenario to baseline from:', prevActive);
+        return 'baseline';
+      });
+      
+      setUnsavedChanges(prev => {
+        console.log('Clearing unsaved changes');
+        return false;
+      });
+      
+      setPendingChanges(prev => {
+        console.log('Clearing pending changes');
+        return {};
+      });
+      
+      setVisualizationsNeedUpdate(prev => {
+        console.log('Clearing visualization update flag');
+        return false;
+      });
+      
+      setLastAppliedProjections(prev => {
+        console.log('Clearing last applied projections');
+        return null;
+      });
+    });
+  }, [workforceData.baselineParameters]);
 
   // Effect to handle visualization updates only when changes are applied
   React.useEffect(() => {
@@ -1384,59 +1442,118 @@ function App() {
 
                   if (scenarioId === 'baseline') {
                     console.log('Loading baseline parameters');
-                    // Always use the immutable baseline parameters - create a completely fresh copy
-                    const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
                     
-                    // Force a new object reference to ensure isolation
-                    setEditingParameters(() => baselineParametersCopy);
-                    // Remove working scenario if switching away
-                    setScenarios(prev => prev.filter(s => s.id !== 'working'));
-                    setActiveScenario('baseline');
-                    setUnsavedChanges(false);
-                    setPendingChanges({});
+                    // Use functional updates to ensure state consistency
+                    React.startTransition(() => {
+                      // Create completely fresh copy with guaranteed new reference
+                      const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
+                      
+                      // Update all states with functional updates
+                      setEditingParameters(prevParams => {
+                        console.log('Previous editing parameters cleared for baseline');
+                        return baselineParametersCopy;
+                      });
+                      
+                      setScenarios(prevScenarios => {
+                        console.log('Removing working scenario if exists');
+                        return prevScenarios.filter(s => s.id !== 'working');
+                      });
+                      
+                      setActiveScenario(prevActive => {
+                        console.log('Setting active scenario to baseline from:', prevActive);
+                        return 'baseline';
+                      });
+                      
+                      setUnsavedChanges(prev => {
+                        console.log('Clearing unsaved changes flag');
+                        return false;
+                      });
+                      
+                      setPendingChanges(prev => {
+                        console.log('Clearing pending changes');
+                        return {};
+                      });
+                    });
                   } else {
-                    // Use functional state to ensure we get the latest scenarios
+                    // Use functional state updates for scenario loading
                     setScenarios(currentScenarios => {
                       const scenario = currentScenarios.find(s => s.id === scenarioId);
                       console.log('Found scenario:', scenario ? { id: scenario.id, name: scenario.name, hasParameters: !!scenario.parameters } : 'NOT FOUND');
-                      console.log('All scenario details:', currentScenarios.map(s => ({ 
-                        id: s.id, 
-                        name: s.name, 
-                        hasParameters: !!s.parameters,
-                        createdAt: s.createdAt 
-                      })));
-
+                      
                       if (scenario && scenario.parameters) {
                         console.log('Loading scenario parameters for:', scenario.name);
-                        // Create a completely independent copy to prevent reference sharing
-                        const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
                         
-                        // Force a new object reference to trigger re-renders
-                        setEditingParameters(() => scenarioParametersCopy);
-                        setActiveScenario(scenarioId);
-                        setUnsavedChanges(false);
-                        setPendingChanges({});
+                        // Use React.startTransition for better performance
+                        React.startTransition(() => {
+                          // Create completely independent copy with guaranteed new reference
+                          const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
+                          
+                          // Update all states with functional updates
+                          setEditingParameters(prevParams => {
+                            console.log('Previous editing parameters replaced with scenario parameters');
+                            return scenarioParametersCopy;
+                          });
+                          
+                          setActiveScenario(prevActive => {
+                            console.log('Active scenario changed from:', prevActive, 'to:', scenarioId);
+                            return scenarioId;
+                          });
+                          
+                          setUnsavedChanges(prev => {
+                            console.log('Clearing unsaved changes flag for scenario load');
+                            return false;
+                          });
+                          
+                          setPendingChanges(prev => {
+                            console.log('Clearing pending changes for scenario load');
+                            return {};
+                          });
+                        });
+                        
                         console.log('Successfully loaded scenario with isolated parameters:', scenario.name);
                       } else {
                         console.error('Scenario not found or missing parameters:', scenarioId);
                         console.error('Available scenario IDs:', currentScenarios.map(s => s.id));
-                        console.error('Detailed scenario info:', currentScenarios);
+                        
                         // Show user-friendly error
                         alert(`Error: Could not load scenario "${scenarioId}". The scenario may have been deleted or corrupted.`);
-                        // Fallback to baseline if scenario is corrupted
-                        const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
-                        setEditingParameters(baselineParametersCopy);
-                        setActiveScenario('baseline');
-                        setUnsavedChanges(false);
-                        setPendingChanges({});
+                        
+                        // Fallback to baseline with functional updates
+                        React.startTransition(() => {
+                          const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
+                          
+                          setEditingParameters(prevParams => {
+                            console.log('Fallback to baseline parameters due to error');
+                            return baselineParametersCopy;
+                          });
+                          
+                          setActiveScenario(prevActive => {
+                            console.log('Fallback to baseline scenario from:', prevActive);
+                            return 'baseline';
+                          });
+                          
+                          setUnsavedChanges(prev => false);
+                          setPendingChanges(prev => ({}));
+                        });
                       }
                       
+                      // Filter out working scenario and return updated scenarios
                       return currentScenarios.filter(s => s.id !== 'working');
                     });
                   }
                 } catch (error) {
                   console.error("An error occurred while loading the scenario", error);
                   alert('Error loading scenario. Please try again.');
+                  
+                  // Emergency fallback to baseline with functional updates
+                  React.startTransition(() => {
+                    const safeBaselineParams = JSON.parse(JSON.stringify(workforceData.baselineParameters));
+                    
+                    setEditingParameters(prev => safeBaselineParams);
+                    setActiveScenario(prev => 'baseline');
+                    setUnsavedChanges(prev => false);
+                    setPendingChanges(prev => ({}));
+                  });
                 }
               }}
             />
