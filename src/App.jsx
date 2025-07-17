@@ -986,7 +986,24 @@ function App() {
       } else {
         // Show the saved scenario projections (including working scenario)
         const scenario = scenarios.find(s => s.id === activeScenario);
-        return scenario?.projections || executiveData.projections;
+        if (scenario && scenario.projections) {
+          console.log('Using scenario projections for:', scenario.name);
+          return scenario.projections;
+        } else {
+          console.warn('Scenario projections missing, regenerating for:', activeScenario);
+          // If projections are missing, regenerate them from scenario parameters
+          if (scenario && scenario.parameters) {
+            const regeneratedProjections = generateSampleProjections(scenario.parameters);
+            // Update the scenario with the regenerated projections
+            setScenarios(prev => prev.map(s => 
+              s.id === activeScenario 
+                ? { ...s, projections: regeneratedProjections }
+                : s
+            ));
+            return regeneratedProjections;
+          }
+          return executiveData.projections;
+        }
       }
     } catch (error) {
       console.error('Error getting current scenario projections:', error);
@@ -1398,11 +1415,12 @@ function App() {
                     // Use functional state to ensure we get the latest scenarios
                     setScenarios(currentScenarios => {
                       const scenario = currentScenarios.find(s => s.id === scenarioId);
-                      console.log('Found scenario:', scenario ? { id: scenario.id, name: scenario.name, hasParameters: !!scenario.parameters } : 'NOT FOUND');
+                      console.log('Found scenario:', scenario ? { id: scenario.id, name: scenario.name, hasParameters: !!scenario.parameters, hasProjections: !!scenario.projections } : 'NOT FOUND');
                       console.log('All scenario details:', currentScenarios.map(s => ({ 
                         id: s.id, 
                         name: s.name, 
                         hasParameters: !!s.parameters,
+                        hasProjections: !!s.projections,
                         createdAt: s.createdAt 
                       })));
 
@@ -1411,12 +1429,26 @@ function App() {
                         // Create a completely independent copy to prevent reference sharing
                         const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
                         
+                        // Ensure projections exist and are up-to-date with parameters
+                        let updatedScenarios = currentScenarios;
+                        if (!scenario.projections) {
+                          console.log('Regenerating missing projections for scenario:', scenario.name);
+                          const newProjections = generateSampleProjections(scenario.parameters);
+                          updatedScenarios = currentScenarios.map(s => 
+                            s.id === scenarioId 
+                              ? { ...s, projections: newProjections }
+                              : s
+                          );
+                        }
+                        
                         // Force a new object reference to trigger re-renders
                         setEditingParameters(() => scenarioParametersCopy);
                         setActiveScenario(scenarioId);
                         setUnsavedChanges(false);
                         setPendingChanges({});
                         console.log('Successfully loaded scenario with isolated parameters:', scenario.name);
+                        
+                        return updatedScenarios.filter(s => s.id !== 'working');
                       } else {
                         console.error('Scenario not found or missing parameters:', scenarioId);
                         console.error('Available scenario IDs:', currentScenarios.map(s => s.id));
@@ -1429,9 +1461,8 @@ function App() {
                         setActiveScenario('baseline');
                         setUnsavedChanges(false);
                         setPendingChanges({});
+                        return currentScenarios.filter(s => s.id !== 'working');
                       }
-                      
-                      return currentScenarios.filter(s => s.id !== 'working');
                     });
                   }
                 } catch (error) {
@@ -1498,6 +1529,7 @@ function App() {
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
+              key={`gap-chart-${activeScenario}-${workforceData.dataVersion}`}
               data={getCurrentScenarioProjections()} 
               selectedOccupations={getFilteredOccupations()}
             />
@@ -1554,6 +1586,7 @@ function App() {
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart 
+              key={`supply-demand-chart-${activeScenario}-${workforceData.dataVersion}`}
               data={getCurrentScenarioProjections()} 
               selectedOccupations={getFilteredOccupations()}
             />
@@ -1580,11 +1613,14 @@ function App() {
 
             {/* Only render when changes are applied or scenario is loaded */}
             {(activeScenario !== 'baseline' || !unsavedChanges) ? (
-              <ParameterImpactChart parameters={
-                activeScenario === 'baseline' 
-                  ? workforceData.baselineParameters 
-                  : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-              } />
+              <ParameterImpactChart 
+                key={`parameter-chart-${activeScenario}-${workforceData.dataVersion}`}
+                parameters={
+                  activeScenario === 'baseline' 
+                    ? workforceData.baselineParameters 
+                    : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
+                } 
+              />
             ) : (
               <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
                 <div className="text-center">
