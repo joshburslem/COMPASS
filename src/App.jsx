@@ -37,23 +37,21 @@ class ErrorBoundary extends React.Component {
 }
 
 // Extract parameter grid components outside App to prevent recreation
-const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false, selectedParameterYear }) => {
+const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false, selectedParameterYear, adjustmentMode, setAdjustmentMode }) => {
   const inputRefs = React.useRef({});
   const [focusedInput, setFocusedInput] = React.useState(null);
-  const [adjustmentMode, setAdjustmentMode] = React.useState('absolute'); // 'absolute' or 'percentage'
 
   // Use useCallback to prevent unnecessary re-renders
   const handleInputChange = React.useCallback((paramType, year, occupation, value) => {
     const inputKey = `${paramType}-${year}-${occupation}`;
     setFocusedInput(inputKey);
     
-    let finalValue = value;
+    let finalValue = parseFloat(value) || 0;
     
     // If in percentage mode, convert percentage to absolute value
     if (adjustmentMode === 'percentage') {
       const baseline = baselineParameters[selectedParameterYear][occupation];
-      const percentageChange = parseFloat(value) || 0;
-      finalValue = baseline * (1 + percentageChange / 100);
+      finalValue = baseline * (1 + finalValue / 100);
     }
     
     onUpdate(paramType, year, occupation, finalValue);
@@ -171,26 +169,24 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
   );
 });
 
-const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories, selectedParameterYear }) => {
+const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories, selectedParameterYear, adjustmentMode, setAdjustmentMode }) => {
   const inputRefs = React.useRef({});
   const [focusedInput, setFocusedInput] = React.useState(null);
-  const [adjustmentMode, setAdjustmentMode] = React.useState('absolute'); // 'absolute' or 'percentage'
 
   // Use useCallback to prevent unnecessary re-renders
   const handleInputChange = React.useCallback((paramType, year, category, value) => {
     const inputKey = `${paramType}-${year}-${category}`;
     setFocusedInput(inputKey);
     
-    let finalValue = value;
+    let finalValue = parseFloat(value) || 0;
     
     // If in percentage mode, convert percentage to absolute value
     if (adjustmentMode === 'percentage') {
       const baseline = baselineParameters[selectedParameterYear][category];
-      const percentageChange = parseFloat(value) || 0;
-      finalValue = baseline * (1 + percentageChange / 100);
+      finalValue = baseline * (1 + finalValue / 100);
     } else {
       // For absolute mode with percentage parameters, convert from percentage input to decimal
-      finalValue = parseFloat(value) / 100;
+      finalValue = finalValue / 100;
     }
     
     onUpdate(paramType, year, category, finalValue);
@@ -330,6 +326,7 @@ function App() {
   const [lastAppliedProjections, setLastAppliedProjections] = React.useState(null);
   const [uploadStatus, setUploadStatus] = React.useState(null);
   const [isUsingUploadedData, setIsUsingUploadedData] = React.useState(false);
+  const [adjustmentMode, setAdjustmentMode] = React.useState('absolute'); // 'absolute' or 'percentage'
 
   // Enhanced data structure with all editable parameters
   const [workforceData, setWorkforceData] = React.useState(() => {
@@ -1423,6 +1420,8 @@ function App() {
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
               <ParameterGridWithBaseline 
                 key={`international-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
@@ -1433,6 +1432,8 @@ function App() {
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
               <ParameterGridWithBaseline 
                 key={`domestic-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
@@ -1443,6 +1444,8 @@ function App() {
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
               <ParameterGridWithBaseline 
                 key={`reentrants-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
@@ -1453,6 +1456,8 @@ function App() {
                 onUpdate={updateParameter}
                 occupations={workforceData.occupations}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
             </div>
           )}
@@ -1485,6 +1490,8 @@ function App() {
                 occupations={workforceData.occupations}
                 isPercentage={true}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
               <ParameterGridWithBaseline 
                 key={`attrition-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
@@ -1496,6 +1503,8 @@ function App() {
                 occupations={workforceData.occupations}
                 isPercentage={true}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
             </div>
           )}
@@ -1527,6 +1536,8 @@ function App() {
                 onUpdate={updateParameter}
                 categories={['0-18', '19-64', '65-84', '85+']}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
               <DemandParameterGrid 
                 key={`health-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
@@ -1537,6 +1548,8 @@ function App() {
                 onUpdate={updateParameter}
                 categories={['Major Chronic', 'Minor Acute', 'Palliative', 'Healthy']}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
               <DemandParameterGrid 
                 key={`service-grid-${workforceData.dataVersion}-${selectedParameterYear}-${activeScenario}`}
@@ -1547,6 +1560,8 @@ function App() {
                 onUpdate={updateParameter}
                 categories={['Primary Care Visits', 'Preventive Care', 'Chronic Disease Management', 'Mental Health Services']}
                 selectedParameterYear={selectedParameterYear}
+                adjustmentMode={adjustmentMode}
+                setAdjustmentMode={setAdjustmentMode}
               />
             </div>
           )}
