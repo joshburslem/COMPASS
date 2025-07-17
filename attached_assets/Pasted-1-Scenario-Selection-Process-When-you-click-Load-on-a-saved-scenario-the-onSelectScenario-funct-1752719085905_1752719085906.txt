@@ -1,0 +1,43 @@
+1. Scenario Selection Process
+When you click "Load" on a saved scenario, the onSelectScenario function is called with the scenario ID. The console logs show this process:
+
+Loading scenario: scenario_1752718275904_wobetq0gf
+Found scenario: {"id":"scenario_1752718275904_wobetq0gf","name":"test","hasParameters":true,"hasProjections":true}
+Loading scenario parameters for: test
+Successfully loaded scenario with isolated parameters: test
+2. Parameter Loading
+The scenario's saved parameters are loaded into editingParameters:
+
+const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
+setEditingParameters(() => scenarioParametersCopy);
+3. Visualization Data Population
+The visualizations in the Scenario Builder get their data from getCurrentScenarioProjections(), which returns the scenario's pre-calculated projections that were saved when the scenario was created:
+
+const getCurrentScenarioProjections = () => {
+  if (activeScenario === 'baseline') {
+    return executiveData.projections;
+  } else {
+    // Show the saved scenario projections
+    const scenario = scenarios.find(s => s.id === activeScenario);
+    return scenario?.projections || executiveData.projections;
+  }
+};
+4. What Gets Populated in Each Visualization
+Parameter Grids
+Educational Inflow, International Migrants, etc.: Populated with the scenario's saved parameter values
+Baseline comparison: Shows changes relative to the scenario's original baseline (not the global baseline)
+Charts
+Workforce Gap Trend Chart: Uses scenario.projections data
+Supply vs Demand Analysis: Uses scenario.projections data
+Parameter Impact Chart: Uses the loaded scenario.parameters
+5. Key Data Sources
+The visualizations pull from these specific saved scenario properties:
+
+scenario.parameters - All the parameter values that were set when the scenario was created
+scenario.projections - The workforce projections that were calculated and saved when the scenario was created
+Baseline reference - Uses the scenario's own parameter baseline for comparison (via getCurrentScenarioBaseline())
+6. Important Notes
+The visualizations show pre-calculated data from when the scenario was saved, not live calculations
+If you modify parameters after loading a scenario, the visualizations won't update until you click "Apply Changes"
+Each scenario maintains its own independent parameter baseline for comparison purposes
+The console logs confirm successful loading: "Using scenario projections for: test"
