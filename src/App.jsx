@@ -982,20 +982,11 @@ function App() {
       // Analyst View shows applied scenario projections
       if (activeScenario === 'baseline') {
         // Always show baseline projections
-        console.log('Using baseline projections');
         return executiveData.projections;
       } else {
         // Show the saved scenario projections (including working scenario)
         const scenario = scenarios.find(s => s.id === activeScenario);
-        if (scenario && scenario.projections) {
-          console.log('Using scenario projections for:', scenario.name, 'ID:', scenario.id);
-          console.log('Scenario projections sample:', Object.keys(scenario.projections).slice(0, 3));
-          return scenario.projections;
-        } else {
-          console.warn('Scenario not found or missing projections, falling back to baseline:', activeScenario);
-          console.log('Available scenarios:', scenarios.map(s => ({ id: s.id, name: s.name, hasProjections: !!s.projections })));
-          return executiveData.projections;
-        }
+        return scenario?.projections || executiveData.projections;
       }
     } catch (error) {
       console.error('Error getting current scenario projections:', error);
@@ -1403,49 +1394,45 @@ function App() {
                     setActiveScenario('baseline');
                     setUnsavedChanges(false);
                     setPendingChanges({});
-                    setVisualizationsNeedUpdate(true); // Force visualization update
                   } else {
-                    const scenario = scenarios.find(s => s.id === scenarioId);
-                    console.log('Found scenario:', scenario ? { id: scenario.id, name: scenario.name, hasParameters: !!scenario.parameters, hasProjections: !!scenario.projections } : 'NOT FOUND');
-
-                    if (scenario && scenario.parameters) {
-                      console.log('Loading scenario parameters for:', scenario.name);
-                      console.log('Scenario has projections:', !!scenario.projections);
-                      
-                      // Create a completely independent copy to prevent reference sharing
-                      const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
-                      
-                      // Update state in the correct order to ensure consistency
-                      setActiveScenario(scenarioId);
-                      setEditingParameters(() => scenarioParametersCopy);
-                      setUnsavedChanges(false);
-                      setPendingChanges({});
-                      setVisualizationsNeedUpdate(true); // Force visualization update
-                      
-                      // Remove working scenario if switching away
-                      setScenarios(prev => prev.filter(s => s.id !== 'working'));
-                      
-                      console.log('Successfully loaded scenario with isolated parameters:', scenario.name);
-                      console.log('Active scenario updated to:', scenarioId);
-                    } else {
-                      console.error('Scenario not found or missing parameters:', scenarioId);
-                      console.error('Available scenario IDs:', scenarios.map(s => s.id));
-                      console.error('Detailed scenario info:', scenarios.map(s => ({ 
+                    // Use functional state to ensure we get the latest scenarios
+                    setScenarios(currentScenarios => {
+                      const scenario = currentScenarios.find(s => s.id === scenarioId);
+                      console.log('Found scenario:', scenario ? { id: scenario.id, name: scenario.name, hasParameters: !!scenario.parameters } : 'NOT FOUND');
+                      console.log('All scenario details:', currentScenarios.map(s => ({ 
                         id: s.id, 
                         name: s.name, 
                         hasParameters: !!s.parameters,
-                        hasProjections: !!s.projections
+                        createdAt: s.createdAt 
                       })));
-                      // Show user-friendly error
-                      alert(`Error: Could not load scenario "${scenarioId}". The scenario may have been deleted or corrupted.`);
-                      // Fallback to baseline if scenario is corrupted
-                      const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
-                      setEditingParameters(baselineParametersCopy);
-                      setActiveScenario('baseline');
-                      setUnsavedChanges(false);
-                      setPendingChanges({});
-                      setVisualizationsNeedUpdate(true);
-                    }
+
+                      if (scenario && scenario.parameters) {
+                        console.log('Loading scenario parameters for:', scenario.name);
+                        // Create a completely independent copy to prevent reference sharing
+                        const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
+                        
+                        // Force a new object reference to trigger re-renders
+                        setEditingParameters(() => scenarioParametersCopy);
+                        setActiveScenario(scenarioId);
+                        setUnsavedChanges(false);
+                        setPendingChanges({});
+                        console.log('Successfully loaded scenario with isolated parameters:', scenario.name);
+                      } else {
+                        console.error('Scenario not found or missing parameters:', scenarioId);
+                        console.error('Available scenario IDs:', currentScenarios.map(s => s.id));
+                        console.error('Detailed scenario info:', currentScenarios);
+                        // Show user-friendly error
+                        alert(`Error: Could not load scenario "${scenarioId}". The scenario may have been deleted or corrupted.`);
+                        // Fallback to baseline if scenario is corrupted
+                        const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
+                        setEditingParameters(baselineParametersCopy);
+                        setActiveScenario('baseline');
+                        setUnsavedChanges(false);
+                        setPendingChanges({});
+                      }
+                      
+                      return currentScenarios.filter(s => s.id !== 'working');
+                    });
                   }
                 } catch (error) {
                   console.error("An error occurred while loading the scenario", error);
@@ -1511,7 +1498,6 @@ function App() {
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <WorkforceGapTrendChart 
-              key={`workforce-gap-${activeScenario}-${workforceData.dataVersion}`}
               data={getCurrentScenarioProjections()} 
               selectedOccupations={getFilteredOccupations()}
             />
@@ -1568,7 +1554,6 @@ function App() {
           {/* Only render when changes are applied or scenario is loaded */}
           {(activeScenario !== 'baseline' || !unsavedChanges) ? (
             <DetailedSupplyDemandChart 
-              key={`supply-demand-${activeScenario}-${workforceData.dataVersion}`}
               data={getCurrentScenarioProjections()} 
               selectedOccupations={getFilteredOccupations()}
             />
@@ -1595,14 +1580,11 @@ function App() {
 
             {/* Only render when changes are applied or scenario is loaded */}
             {(activeScenario !== 'baseline' || !unsavedChanges) ? (
-              <ParameterImpactChart 
-                key={`parameter-impact-${activeScenario}-${workforceData.dataVersion}`}
-                parameters={
-                  activeScenario === 'baseline' 
-                    ? workforceData.baselineParameters 
-                    : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
-                } 
-              />
+              <ParameterImpactChart parameters={
+                activeScenario === 'baseline' 
+                  ? workforceData.baselineParameters 
+                  : scenarios.find(s => s.id === activeScenario)?.parameters || workforceData.baselineParameters
+              } />
             ) : (
               <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
                 <div className="text-center">
