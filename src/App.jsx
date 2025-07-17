@@ -720,8 +720,8 @@ function App() {
 
   const resetParameters = () => {
     if (activeScenario === 'baseline' || activeScenario === 'working') {
-      // Always use the immutable baseline parameters
-      setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+      // Always use the immutable baseline parameters with forced new reference
+      setEditingParameters(() => JSON.parse(JSON.stringify(workforceData.baselineParameters)));
       if (activeScenario === 'working') {
         // Remove working scenario and return to baseline
         setScenarios(scenarios.filter(s => s.id !== 'working'));
@@ -729,9 +729,9 @@ function App() {
       }
     } else {
       const scenario = scenarios.find(s => s.id === activeScenario);
-      if (scenario) {
-        // Use the scenario's saved parameters
-        setEditingParameters(JSON.parse(JSON.stringify(scenario.parameters)));
+      if (scenario && scenario.parameters) {
+        // Use the scenario's saved parameters with forced new reference
+        setEditingParameters(() => JSON.parse(JSON.stringify(scenario.parameters)));
       }
     }
     setUnsavedChanges(false);
@@ -739,8 +739,8 @@ function App() {
   };
 
   const resetToBaseline = () => {
-    // Always use the immutable baseline parameters
-    setEditingParameters(JSON.parse(JSON.stringify(workforceData.baselineParameters)));
+    // Always use the immutable baseline parameters with forced new reference
+    setEditingParameters(() => JSON.parse(JSON.stringify(workforceData.baselineParameters)));
     // Remove working scenario if it exists
     setScenarios(scenarios.filter(s => s.id !== 'working'));
     setActiveScenario('baseline');
@@ -761,9 +761,14 @@ function App() {
 
   const updateParameter = React.useCallback((paramType, year, occupation, value) => {
     try {
-      // Create a completely new parameter object to avoid any reference issues
+      // Create a completely independent copy to prevent any reference contamination
       const newParams = JSON.parse(JSON.stringify(editingParameters));
       const newValue = parseFloat(value) || 0;
+      
+      // Ensure the parameter structure exists
+      if (!newParams[paramType]) {
+        newParams[paramType] = {};
+      }
       
       if (!newParams[paramType]) {
         newParams[paramType] = {};
@@ -847,7 +852,8 @@ function App() {
         }
       }
       
-      setEditingParameters(newParams);
+      // Use functional update to ensure proper state isolation
+      setEditingParameters(() => newParams);
       setUnsavedChanges(true);
 
       // Track the specific parameter change
@@ -857,8 +863,8 @@ function App() {
       }));
     } catch (error) {
       console.error('Error updating parameter:', error);
-      // Reset to previous state if update fails
-      setEditingParameters(prev => prev);
+      // Don't reset state on error to prevent data loss
+      alert('Error updating parameter. Please try again.');
     }
   }, [editingParameters]);
 
@@ -893,11 +899,10 @@ function App() {
   const createNewScenario = React.useCallback((scenarioData) => {
     try {
       console.log('Creating scenario with data:', scenarioData);
-      console.log('Current editing parameters:', editingParameters);
       
-      // Create a deep copy of current editing parameters immediately
+      // Create a completely independent deep copy to prevent reference sharing
       const parametersSnapshot = JSON.parse(JSON.stringify(editingParameters));
-      console.log('Parameters snapshot created');
+      console.log('Parameters snapshot created with independent copy');
       
       const scenarioProjections = generateSampleProjections(parametersSnapshot);
 
@@ -906,14 +911,24 @@ function App() {
       const randomPart = Math.random().toString(36).substr(2, 9);
       const uniqueId = `scenario_${timestamp}_${randomPart}`;
 
-      // Use functional state update to avoid stale closure issues
+      // Create the scenario object with completely isolated data
+      const newScenario = {
+        id: uniqueId,
+        name: scenarioData.name || 'Unnamed Scenario',
+        description: scenarioData.description || '',
+        parameters: parametersSnapshot, // Isolated parameters
+        projections: scenarioProjections,
+        createdAt: new Date().toISOString()
+      };
+
+      // Use functional state update with proper isolation
       setScenarios(prevScenarios => {
         console.log('Existing scenarios before creation:', prevScenarios.map(s => ({ id: s.id, name: s.name })));
         
         // Remove working scenario if it exists
         const filteredScenarios = prevScenarios.filter(s => s.id !== 'working');
         
-        // Ensure the ID is truly unique by checking against existing scenarios
+        // Ensure the ID is truly unique
         let finalId = uniqueId;
         let counter = 1;
         while (filteredScenarios.some(s => s.id === finalId)) {
@@ -922,38 +937,34 @@ function App() {
         }
 
         // Handle duplicate names
-        let finalName = scenarioData.name || 'Unnamed Scenario';
+        let finalName = newScenario.name;
         const duplicateNameScenarios = filteredScenarios.filter(s => s.name === finalName);
         if (duplicateNameScenarios.length > 0) {
           finalName = `${finalName} (${duplicateNameScenarios.length + 1})`;
         }
 
-        const newScenario = {
+        // Create the final scenario with unique ID and name
+        const finalScenario = {
+          ...newScenario,
           id: finalId,
-          name: finalName,
-          description: scenarioData.description || '',
-          parameters: parametersSnapshot, // Use the snapshot
-          projections: scenarioProjections,
-          createdAt: new Date().toISOString()
+          name: finalName
         };
 
         console.log('New scenario created with ID:', finalId);
 
-        const updatedScenarios = [...filteredScenarios, newScenario];
+        const updatedScenarios = [...filteredScenarios, finalScenario];
         console.log('Scenarios updated from', prevScenarios.length, 'to', updatedScenarios.length);
         console.log('New scenarios list:', updatedScenarios.map(s => ({ id: s.id, name: s.name })));
         
-        // Set the active scenario immediately in the callback
-        setTimeout(() => {
-          setActiveScenario(finalId);
-          setShowScenarioModal(false);
-          setUnsavedChanges(false);
-          setPendingChanges({});
-          console.log('Active scenario set to:', finalId);
-        }, 0);
-        
         return updatedScenarios;
       });
+
+      // Set active scenario and cleanup state after scenarios update
+      setActiveScenario(uniqueId);
+      setShowScenarioModal(false);
+      setUnsavedChanges(false);
+      setPendingChanges({});
+      console.log('Active scenario set to:', uniqueId);
 
     } catch (error) {
       console.error('Error creating new scenario:', error);
@@ -1373,9 +1384,11 @@ function App() {
 
                   if (scenarioId === 'baseline') {
                     console.log('Loading baseline parameters');
-                    // Always use the immutable baseline parameters - create a fresh copy
+                    // Always use the immutable baseline parameters - create a completely fresh copy
                     const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
-                    setEditingParameters(baselineParametersCopy);
+                    
+                    // Force a new object reference to ensure isolation
+                    setEditingParameters(() => baselineParametersCopy);
                     // Remove working scenario if switching away
                     setScenarios(prev => prev.filter(s => s.id !== 'working'));
                     setActiveScenario('baseline');
@@ -1395,13 +1408,15 @@ function App() {
 
                       if (scenario && scenario.parameters) {
                         console.log('Loading scenario parameters for:', scenario.name);
-                        // Create a completely fresh copy of scenario parameters
+                        // Create a completely independent copy to prevent reference sharing
                         const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
-                        setEditingParameters(scenarioParametersCopy);
+                        
+                        // Force a new object reference to trigger re-renders
+                        setEditingParameters(() => scenarioParametersCopy);
                         setActiveScenario(scenarioId);
                         setUnsavedChanges(false);
                         setPendingChanges({});
-                        console.log('Successfully loaded scenario:', scenario.name);
+                        console.log('Successfully loaded scenario with isolated parameters:', scenario.name);
                       } else {
                         console.error('Scenario not found or missing parameters:', scenarioId);
                         console.error('Available scenario IDs:', currentScenarios.map(s => s.id));
