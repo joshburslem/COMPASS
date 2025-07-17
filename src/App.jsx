@@ -40,13 +40,24 @@ class ErrorBoundary extends React.Component {
 const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, occupations, isPercentage = false, selectedParameterYear }) => {
   const inputRefs = React.useRef({});
   const [focusedInput, setFocusedInput] = React.useState(null);
+  const [adjustmentMode, setAdjustmentMode] = React.useState('absolute'); // 'absolute' or 'percentage'
 
   // Use useCallback to prevent unnecessary re-renders
   const handleInputChange = React.useCallback((paramType, year, occupation, value) => {
     const inputKey = `${paramType}-${year}-${occupation}`;
     setFocusedInput(inputKey);
-    onUpdate(paramType, year, occupation, value);
-  }, [onUpdate]);
+    
+    let finalValue = value;
+    
+    // If in percentage mode, convert percentage to absolute value
+    if (adjustmentMode === 'percentage') {
+      const baseline = baselineParameters[selectedParameterYear][occupation];
+      const percentageChange = parseFloat(value) || 0;
+      finalValue = baseline * (1 + percentageChange / 100);
+    }
+    
+    onUpdate(paramType, year, occupation, finalValue);
+  }, [onUpdate, adjustmentMode, baselineParameters, selectedParameterYear]);
 
   const handleInputFocus = React.useCallback((paramType, year, occupation) => {
     const inputKey = `${paramType}-${year}-${occupation}`;
@@ -71,7 +82,34 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
 
   return (
     <div>
-      <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-semibold text-gray-800">{title}</h4>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Adjustment Mode:</span>
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setAdjustmentMode('absolute')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                adjustmentMode === 'absolute'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Absolute
+            </button>
+            <button
+              onClick={() => setAdjustmentMode('percentage')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                adjustmentMode === 'percentage'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Percentage
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="bg-white border rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {occupations.map(occ => {
@@ -80,31 +118,49 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
             const change = ((current - baseline) / baseline * 100).toFixed(1);
             const inputKey = `${parameterType}-${selectedParameterYear}-${occ}`;
 
+            // Calculate display value based on adjustment mode
+            let displayValue = current;
+            if (adjustmentMode === 'percentage') {
+              displayValue = (((current - baseline) / baseline) * 100).toFixed(2);
+            }
+
             return (
               <div key={occ} className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">{occ}</label>
                 <div className="space-y-1">
-                  <input
-                    ref={(el) => {
-                      if (el) {
-                        inputRefs.current[inputKey] = el;
-                      }
-                    }}
-                    type="number"
-                    step={isPercentage ? "0.01" : "1"}
-                    value={current}
-                    onChange={(e) => handleInputChange(parameterType, selectedParameterYear, occ, e.target.value)}
-                    onFocus={() => handleInputFocus(parameterType, selectedParameterYear, occ)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        if (el) {
+                          inputRefs.current[inputKey] = el;
+                        }
+                      }}
+                      type="number"
+                      step={adjustmentMode === 'percentage' ? "0.1" : (isPercentage ? "0.01" : "1")}
+                      value={displayValue}
+                      onChange={(e) => handleInputChange(parameterType, selectedParameterYear, occ, e.target.value)}
+                      onFocus={() => handleInputFocus(parameterType, selectedParameterYear, occ)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {adjustmentMode === 'percentage' && (
+                      <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                        %
+                      </span>
+                    )}
+                  </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500">
-                      Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline}
+                      Baseline: {isPercentage ? `${(baseline * 100).toFixed(1)}%` : baseline.toLocaleString()}
                     </span>
                     <span className={`font-medium ${Math.abs(change) < 0.01 ? 'text-gray-500' : change > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
                     </span>
                   </div>
+                  {adjustmentMode === 'percentage' && (
+                    <div className="text-xs text-gray-600">
+                      New value: {current.toLocaleString()}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -118,13 +174,27 @@ const ParameterGridWithBaseline = React.memo(({ title, parameterType, parameters
 const DemandParameterGrid = React.memo(({ title, parameterType, parameters, baselineParameters, onUpdate, categories, selectedParameterYear }) => {
   const inputRefs = React.useRef({});
   const [focusedInput, setFocusedInput] = React.useState(null);
+  const [adjustmentMode, setAdjustmentMode] = React.useState('absolute'); // 'absolute' or 'percentage'
 
   // Use useCallback to prevent unnecessary re-renders
   const handleInputChange = React.useCallback((paramType, year, category, value) => {
     const inputKey = `${paramType}-${year}-${category}`;
     setFocusedInput(inputKey);
-    onUpdate(paramType, year, category, value);
-  }, [onUpdate]);
+    
+    let finalValue = value;
+    
+    // If in percentage mode, convert percentage to absolute value
+    if (adjustmentMode === 'percentage') {
+      const baseline = baselineParameters[selectedParameterYear][category];
+      const percentageChange = parseFloat(value) || 0;
+      finalValue = baseline * (1 + percentageChange / 100);
+    } else {
+      // For absolute mode with percentage parameters, convert from percentage input to decimal
+      finalValue = parseFloat(value) / 100;
+    }
+    
+    onUpdate(paramType, year, category, finalValue);
+  }, [onUpdate, adjustmentMode, baselineParameters, selectedParameterYear]);
 
   const handleInputFocus = React.useCallback((paramType, year, category) => {
     const inputKey = `${paramType}-${year}-${category}`;
@@ -149,7 +219,34 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
 
   return (
     <div>
-      <h4 className="font-semibold text-gray-800 mb-3">{title}</h4>
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-semibold text-gray-800">{title}</h4>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Adjustment Mode:</span>
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setAdjustmentMode('absolute')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                adjustmentMode === 'absolute'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Absolute
+            </button>
+            <button
+              onClick={() => setAdjustmentMode('percentage')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                adjustmentMode === 'percentage'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Percentage
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="bg-white border rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {categories.map(cat => {
@@ -158,23 +255,37 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
             const change = ((current - baseline) / baseline * 100).toFixed(1);
             const inputKey = `${parameterType}-${selectedParameterYear}-${cat}`;
 
+            // Calculate display value based on adjustment mode
+            let displayValue = current;
+            if (adjustmentMode === 'percentage') {
+              displayValue = (((current - baseline) / baseline) * 100).toFixed(2);
+            } else {
+              // For absolute mode with percentage parameters, show as percentage
+              displayValue = (current * 100).toFixed(3);
+            }
+
             return (
               <div key={cat} className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">{cat}</label>
                 <div className="space-y-1">
-                  <input
-                    ref={(el) => {
-                      if (el) {
-                        inputRefs.current[inputKey] = el;
-                      }
-                    }}
-                    type="number"
-                    step="0.001"
-                    value={current}
-                    onChange={(e) => handleInputChange(parameterType, selectedParameterYear, cat, e.target.value)}
-                    onFocus={() => handleInputFocus(parameterType, selectedParameterYear, cat)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      ref={(el) => {
+                        if (el) {
+                          inputRefs.current[inputKey] = el;
+                        }
+                      }}
+                      type="number"
+                      step={adjustmentMode === 'percentage' ? "0.1" : "0.001"}
+                      value={displayValue}
+                      onChange={(e) => handleInputChange(parameterType, selectedParameterYear, cat, e.target.value)}
+                      onFocus={() => handleInputFocus(parameterType, selectedParameterYear, cat)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                      %
+                    </span>
+                  </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500">
                       Baseline: {(baseline * 100).toFixed(1)}%
@@ -183,6 +294,11 @@ const DemandParameterGrid = React.memo(({ title, parameterType, parameters, base
                       {Math.abs(change) < 0.01 ? '=' : change > 0 ? '+' : ''}{change}%
                     </span>
                   </div>
+                  {adjustmentMode === 'percentage' && (
+                    <div className="text-xs text-gray-600">
+                      New value: {(current * 100).toFixed(3)}%
+                    </div>
+                  )}
                 </div>
               </div>
             );
