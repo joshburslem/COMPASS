@@ -957,12 +957,29 @@ function App() {
   const createNewScenario = React.useCallback((scenarioData) => {
     try {
       console.log('Creating scenario with data:', scenarioData);
+      console.log('Current active scenario when creating:', activeScenario);
       
       // Create a completely independent deep copy to prevent reference sharing
+      // Use a more robust deep cloning approach to ensure complete isolation
       const parametersSnapshot = JSON.parse(JSON.stringify(editingParameters));
-      console.log('Parameters snapshot created with independent copy');
       
-      const scenarioProjections = generateSampleProjections(parametersSnapshot);
+      // Double-check parameter isolation by creating a fresh copy with explicit structure
+      const isolatedParameters = {
+        supply: JSON.parse(JSON.stringify(parametersSnapshot.supply || {})),
+        educationalInflow: JSON.parse(JSON.stringify(parametersSnapshot.educationalInflow || {})),
+        internationalMigrants: JSON.parse(JSON.stringify(parametersSnapshot.internationalMigrants || {})),
+        domesticMigrants: JSON.parse(JSON.stringify(parametersSnapshot.domesticMigrants || {})),
+        reEntrants: JSON.parse(JSON.stringify(parametersSnapshot.reEntrants || {})),
+        retirementRate: JSON.parse(JSON.stringify(parametersSnapshot.retirementRate || {})),
+        attritionRate: JSON.parse(JSON.stringify(parametersSnapshot.attritionRate || {})),
+        populationGrowth: JSON.parse(JSON.stringify(parametersSnapshot.populationGrowth || {})),
+        healthStatusChange: JSON.parse(JSON.stringify(parametersSnapshot.healthStatusChange || {})),
+        serviceUtilization: JSON.parse(JSON.stringify(parametersSnapshot.serviceUtilization || {}))
+      };
+      
+      console.log('Parameters snapshot created with complete isolation');
+      
+      const scenarioProjections = generateSampleProjections(isolatedParameters);
 
       // Create a truly unique ID using timestamp and random components
       const timestamp = Date.now();
@@ -974,29 +991,36 @@ function App() {
         id: uniqueId,
         name: scenarioData.name || 'Unnamed Scenario',
         description: scenarioData.description || '',
-        parameters: parametersSnapshot, // Isolated parameters
+        parameters: isolatedParameters, // Use the explicitly isolated parameters
         projections: scenarioProjections,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        sourceScenario: activeScenario // Track what scenario this was created from for debugging
       };
 
       // Use functional state update with proper isolation
       setScenarios(prevScenarios => {
         console.log('Existing scenarios before creation:', prevScenarios.map(s => ({ id: s.id, name: s.name })));
         
-        // Remove working scenario if it exists
-        const filteredScenarios = prevScenarios.filter(s => s.id !== 'working');
+        // Create a completely new array with deep copies of existing scenarios to prevent mutation
+        const isolatedExistingScenarios = prevScenarios
+          .filter(s => s.id !== 'working')
+          .map(scenario => ({
+            ...scenario,
+            parameters: JSON.parse(JSON.stringify(scenario.parameters)),
+            projections: JSON.parse(JSON.stringify(scenario.projections))
+          }));
         
         // Ensure the ID is truly unique
         let finalId = uniqueId;
         let counter = 1;
-        while (filteredScenarios.some(s => s.id === finalId)) {
+        while (isolatedExistingScenarios.some(s => s.id === finalId)) {
           finalId = `${uniqueId}_${counter}`;
           counter++;
         }
 
         // Handle duplicate names
         let finalName = newScenario.name;
-        const duplicateNameScenarios = filteredScenarios.filter(s => s.name === finalName);
+        const duplicateNameScenarios = isolatedExistingScenarios.filter(s => s.name === finalName);
         if (duplicateNameScenarios.length > 0) {
           finalName = `${finalName} (${duplicateNameScenarios.length + 1})`;
         }
@@ -1009,8 +1033,9 @@ function App() {
         };
 
         console.log('New scenario created with ID:', finalId);
+        console.log('Source scenario was:', activeScenario);
 
-        const updatedScenarios = [...filteredScenarios, finalScenario];
+        const updatedScenarios = [...isolatedExistingScenarios, finalScenario];
         console.log('Scenarios updated from', prevScenarios.length, 'to', updatedScenarios.length);
         console.log('New scenarios list:', updatedScenarios.map(s => ({ id: s.id, name: s.name })));
         
@@ -1028,7 +1053,7 @@ function App() {
       console.error('Error creating new scenario:', error);
       alert('Error creating scenario. Please try again.');
     }
-  }, [editingParameters]);
+  }, [editingParameters, activeScenario]);
 
   const getCurrentScenarioProjections = () => {
     try {
@@ -1485,12 +1510,23 @@ function App() {
                         
                         // Use React.startTransition for better performance
                         React.startTransition(() => {
-                          // Create completely independent copy with guaranteed new reference
-                          const scenarioParametersCopy = JSON.parse(JSON.stringify(scenario.parameters));
+                          // Create completely independent copy with explicit structure isolation
+                          const scenarioParametersCopy = {
+                            supply: JSON.parse(JSON.stringify(scenario.parameters.supply || {})),
+                            educationalInflow: JSON.parse(JSON.stringify(scenario.parameters.educationalInflow || {})),
+                            internationalMigrants: JSON.parse(JSON.stringify(scenario.parameters.internationalMigrants || {})),
+                            domesticMigrants: JSON.parse(JSON.stringify(scenario.parameters.domesticMigrants || {})),
+                            reEntrants: JSON.parse(JSON.stringify(scenario.parameters.reEntrants || {})),
+                            retirementRate: JSON.parse(JSON.stringify(scenario.parameters.retirementRate || {})),
+                            attritionRate: JSON.parse(JSON.stringify(scenario.parameters.attritionRate || {})),
+                            populationGrowth: JSON.parse(JSON.stringify(scenario.parameters.populationGrowth || {})),
+                            healthStatusChange: JSON.parse(JSON.stringify(scenario.parameters.healthStatusChange || {})),
+                            serviceUtilization: JSON.parse(JSON.stringify(scenario.parameters.serviceUtilization || {}))
+                          };
                           
                           // Update all states with functional updates
                           setEditingParameters(prevParams => {
-                            console.log('Previous editing parameters replaced with scenario parameters');
+                            console.log('Previous editing parameters completely replaced with isolated scenario parameters');
                             return scenarioParametersCopy;
                           });
                           
@@ -1520,10 +1556,21 @@ function App() {
                         
                         // Fallback to baseline with functional updates
                         React.startTransition(() => {
-                          const baselineParametersCopy = JSON.parse(JSON.stringify(workforceData.baselineParameters));
+                          const baselineParametersCopy = {
+                            supply: JSON.parse(JSON.stringify(workforceData.baselineParameters.supply || {})),
+                            educationalInflow: JSON.parse(JSON.stringify(workforceData.baselineParameters.educationalInflow || {})),
+                            internationalMigrants: JSON.parse(JSON.stringify(workforceData.baselineParameters.internationalMigrants || {})),
+                            domesticMigrants: JSON.parse(JSON.stringify(workforceData.baselineParameters.domesticMigrants || {})),
+                            reEntrants: JSON.parse(JSON.stringify(workforceData.baselineParameters.reEntrants || {})),
+                            retirementRate: JSON.parse(JSON.stringify(workforceData.baselineParameters.retirementRate || {})),
+                            attritionRate: JSON.parse(JSON.stringify(workforceData.baselineParameters.attritionRate || {})),
+                            populationGrowth: JSON.parse(JSON.stringify(workforceData.baselineParameters.populationGrowth || {})),
+                            healthStatusChange: JSON.parse(JSON.stringify(workforceData.baselineParameters.healthStatusChange || {})),
+                            serviceUtilization: JSON.parse(JSON.stringify(workforceData.baselineParameters.serviceUtilization || {}))
+                          };
                           
                           setEditingParameters(prevParams => {
-                            console.log('Fallback to baseline parameters due to error');
+                            console.log('Fallback to isolated baseline parameters due to error');
                             return baselineParametersCopy;
                           });
                           
@@ -1537,8 +1584,14 @@ function App() {
                         });
                       }
                       
-                      // Filter out working scenario and return updated scenarios
-                      return currentScenarios.filter(s => s.id !== 'working');
+                      // Return completely isolated scenarios array to prevent cross-contamination
+                      return currentScenarios
+                        .filter(s => s.id !== 'working')
+                        .map(s => ({
+                          ...s,
+                          parameters: JSON.parse(JSON.stringify(s.parameters)),
+                          projections: JSON.parse(JSON.stringify(s.projections))
+                        }));
                     });
                   }
                 } catch (error) {
